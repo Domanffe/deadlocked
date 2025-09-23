@@ -3,5 +3,6 @@
 
 /target
 /radar/node_modules
+/radar/server/node_modules
 
 config.toml

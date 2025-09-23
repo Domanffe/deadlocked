@@ -1,21 +1,31 @@
 {
-    "name": "radar",
+    "name": "svelte-app",
     "version": "1.0.0",
-    "main": "index.js",
+    "private": true,
+    "type": "module",
     "scripts": {
-        "dev": "npx tsx radar.ts"
-    },
-    "author": "avitran0",
-    "license": "GPL-3.0-only",
-    "description": "",
-    "dependencies": {
-        "express": "^5.1.0",
-        "tsx": "^4.20.4",
-        "uuid": "^11.1.0",
-        "ws": "^8.18.3"
+        "build": "rollup -c",
+        "dev": "rollup -c -w",
+        "start": "sirv public --no-clear",
+        "check": "svelte-check"
     },
     "devDependencies": {
-        "@types/express": "^5.0.3",
-        "@types/ws": "^8.18.1"
+        "@rollup/plugin-commonjs": "^24.0.0",
+        "@rollup/plugin-node-resolve": "^15.0.0",
+        "@rollup/plugin-terser": "^0.4.0",
+        "rollup": "^3.15.0",
+        "rollup-plugin-css-only": "^4.3.0",
+        "rollup-plugin-livereload": "^2.0.0",
+        "rollup-plugin-svelte": "^7.1.2",
+        "svelte": "^3.55.0",
+        "svelte-check": "^3.0.0",
+        "svelte-preprocess": "^5.0.0",
+        "@rollup/plugin-typescript": "^11.0.0",
+        "typescript": "^4.9.0",
+        "tslib": "^2.5.0",
+        "@tsconfig/svelte": "^3.0.0"
+    },
+    "dependencies": {
+        "sirv-cli": "^2.0.0"
     }
 }
