@@ -35,12 +35,10 @@
 
     onMount(() => {
         const saved_settings = JSON.parse(localStorage.getItem("settings") || "{}");
-        console.info(saved_settings);
         settings = { ...settings, ...saved_settings };
 
         $effect(() => {
             localStorage.setItem("settings", JSON.stringify(settings));
-            $inspect(settings);
         });
     });
 </script>
