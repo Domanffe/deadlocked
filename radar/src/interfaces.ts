@@ -36,7 +36,7 @@ export interface PlayerData {
     armor: number;
     position: Vec3;
     head: Vec3;
-    name: String;
+    name: string;
     weapon: string;
     has_defuser: boolean;
     has_helmet: boolean;

@@ -1,11 +1,14 @@
 <script lang="ts">
-    import { Config, Globals } from "./interfaces";
+    import { Config, Globals, Vec2 } from "./interfaces";
     import { MapData } from "./map_data";
     import PlayerDot from "./PlayerDot.svelte";
 
     let { globals, settings }: { globals: Globals; settings: Config } = $props();
 
     let map_info = $state(MapData[globals.data.map_name]);
+
+    let scale = $state(1.0);
+    let pan_position: Vec2 = $state({ x: 0.0, y: 0.0 });
 </script>
 
 <div class="radar">
@@ -21,3 +24,15 @@
         {/each}
     {/if}
 </div>
+
+<style>
+    .radar {
+        width: 100%;
+        height: 100%;
+    }
+
+    .radar > img {
+        width: 100%;
+        height: 100%;
+    }
+</style>

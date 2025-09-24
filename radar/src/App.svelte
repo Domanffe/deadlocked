@@ -4,11 +4,12 @@
     import Settings from "./Settings.svelte";
     import WebSocketComponent from "./WebSocketComponent.svelte";
     import { Config, Globals } from "./interfaces";
+    import { sampleData } from "./sample_data";
 
     let globals: Globals = {
         connected: false,
         current_player: null,
-        data: {
+        data: sampleData/*{
             players: [],
             friendlies: [],
             bomb: {
@@ -19,7 +20,7 @@
             },
             map_name: "",
             in_game: false,
-        },
+        }*/,
     };
     let settings: Config = {
         show_team: true,
@@ -83,17 +84,30 @@
 
     main {
         text-align: center;
-        padding: 1em;
+        padding: 1rem;
         margin: 0 auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: calc(100dvh - 2rem);
     }
 
     .main {
+        width: 100%;
+        max-height: 100%;
         display: grid;
         grid-template-columns: 1fr 3fr 1fr;
     }
 
     .player-list {
         border-radius: 1rem;
+        background-color: var(--color-base);
+    }
+
+    .player-list > h1 {
+        padding: 0.4rem 0.8rem;
+        margin: 0;
+        border-bottom: 1px solid var(--color-text);
     }
 
     .team-opponents > h1 {
@@ -104,7 +118,7 @@
         color: var(--color-blue);
     }
 
-    @media (max-width: 32rem) {
+    @media (max-width: 64rem) {
         .main {
             grid-template-columns: 1fr;
         }
