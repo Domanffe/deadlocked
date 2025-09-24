@@ -3,12 +3,13 @@
     import Gear from "./Gear.svelte";
     import { Config } from "./interfaces";
 
-    let open = false;
-    export let settings: Config;
+    let open = $state(false);
+
+    let { settings }: { settings: Config } = $props();
 </script>
 
 <div class="settings">
-    <button on:click={() => (open = !open)}><Gear /></button>
+    <button onclick={() => (open = !open)}><Gear /></button>
     {#if open}
         <div class="settings-menu" transition:fade={{ duration: 200 }}>
             <label>Team Color<input type="color" bind:value={settings.color_team} /></label>

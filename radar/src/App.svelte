@@ -3,9 +3,9 @@
     import Radar from "./Radar.svelte";
     import Settings from "./Settings.svelte";
     import WebSocketComponent from "./WebSocketComponent.svelte";
-    import { Config, State } from "./interfaces";
+    import { Config, Globals } from "./interfaces";
 
-    let state: State = {
+    let globals: Globals = {
         connected: false,
         current_player: null,
         data: {
@@ -13,7 +13,7 @@
             friendlies: [],
             bomb: {
                 planted: false,
-                timer: 0,
+                timer: 0.0,
                 being_defused: false,
                 position: undefined,
             },
@@ -30,15 +30,15 @@
 </script>
 
 <main>
-    <WebSocketComponent {state} />
-    <ConnectionIndicator {state} />
+    <WebSocketComponent {globals} />
+    <ConnectionIndicator state={globals} />
     <Settings {settings} />
     <div class="main">
         <div class="player-list team-opponents">
             <h1>Opponents</h1>
         </div>
 
-        <Radar {state} {settings} />
+        <Radar {globals} {settings} />
 
         <div class="player-list team-friendlies">
             <h1>Teammates</h1>

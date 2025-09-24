@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { WSData } from "./data";
+    import { Globals, WSData } from "./interfaces";
 
-    export let state: { connected: boolean; data: WSData };
+    let { globals }: { globals: Globals } = $props();
 
     const location = window.location;
     const uuid = new URLSearchParams(location.search).get("uuid");
@@ -18,15 +18,15 @@
         websocket.onmessage = wsMessage;
         websocket.onopen = () => {
             console.info("websocket connected successfully");
-            state.connected = true;
+            globals.connected = true;
         };
         websocket.onerror = (error) => {
             console.error("websocket error:", error);
-            state.connected = false;
+            globals.connected = false;
         };
         websocket.onclose = (event) => {
             console.info("websocket closed: ", event.code, event.reason);
-            state.connected = false;
+            globals.connected = false;
         };
     }
 
@@ -40,7 +40,7 @@
     function wsMessage(event: MessageEvent<string>) {
         try {
             const json: WSData = JSON.parse(event.data);
-            state.data = json;
+            globals.data = json;
         } catch (error) {
             console.error("error parsing text: ", error);
         }

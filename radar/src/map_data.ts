@@ -1,7 +1,6 @@
-export const MapData: Record<
-    string,
-    { x: number; y: number; scale: number; rotate: boolean; zoom: number; lowerThreshold?: number }
-> = {
+import { MapInfo } from "./interfaces";
+
+export const MapData: Record<string, MapInfo> = {
     de_ancient_night: { x: -2953, y: 2164, scale: 5.1, rotate: false, zoom: 1 },
     de_dust2: { x: -2476, y: 3239, scale: 4.4, rotate: true, zoom: 1.1 },
     de_inferno: { x: -2087, y: 3870, scale: 4.9, rotate: false, zoom: 1 },
