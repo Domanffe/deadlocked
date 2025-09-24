@@ -1,4 +1,4 @@
-import { MapInfo } from "./interfaces";
+import type { MapInfo } from "./interfaces";
 
 export const MapData: Record<string, MapInfo> = {
     de_ancient_night: { x: -2953, y: 2164, scale: 5.1, rotate: false, zoom: 1 },

@@ -2,12 +2,11 @@ import express from "express";
 import { WebSocket, WebSocketServer } from "ws";
 import path from "path";
 import http from "http";
-import { v4 } from "uuid";
 
 const app = express();
 const PORT = 6346;
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(import.meta.dirname, "public")));
 
 const server = http.createServer(app);
 

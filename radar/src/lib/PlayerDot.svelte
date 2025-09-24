@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { MapInfo, PlayerData, Vec2 } from "./interfaces";
+    import type { MapInfo, PlayerData, Vec2 } from "./interfaces";
 
     let { player, map_info }: { player: PlayerData; map_info: MapInfo } = $props();
 

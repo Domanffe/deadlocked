@@ -1,15 +1,15 @@
 <script lang="ts">
-    import ConnectionIndicator from "./ConnectionIndicator.svelte";
-    import Radar from "./Radar.svelte";
-    import Settings from "./Settings.svelte";
-    import WebSocketComponent from "./WebSocketComponent.svelte";
-    import { Config, Globals } from "./interfaces";
-    import { sampleData } from "./sample_data";
+    import ConnectionIndicator from "./lib/ConnectionIndicator.svelte";
+    import Radar from "./lib/Radar.svelte";
+    import Settings from "./lib/Settings.svelte";
+    import WebSocketComponent from "./lib/WebSocketComponent.svelte";
+    import type { Config, Globals } from "./lib/interfaces";
+    import { sampleData } from "./lib/sample_data";
 
     let globals: Globals = {
         connected: false,
         current_player: null,
-        data: sampleData/*{
+        data: sampleData /*{
             players: [],
             friendlies: [],
             bomb: {
@@ -107,7 +107,7 @@
     .player-list > h1 {
         padding: 0.4rem 0.8rem;
         margin: 0;
-        border-bottom: 1px solid var(--color-text);
+        border-bottom: 1px solid var(--color-highlight);
     }
 
     .team-opponents > h1 {

@@ -7,7 +7,7 @@ export interface Config {
 
 export interface Globals {
     connected: boolean;
-    current_player: boolean;
+    current_player: number | null;
     data: WSData;
 }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Config, Globals, Vec2 } from "./interfaces";
+    import type { Config, Globals, Vec2 } from "./interfaces";
     import { MapData } from "./map_data";
     import PlayerDot from "./PlayerDot.svelte";
 
