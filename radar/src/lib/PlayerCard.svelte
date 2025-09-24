@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { PlayerData } from "./interfaces";
+    import type { PlayerData } from "./ts/interfaces";
 
     let { player }: { player: PlayerData } = $props();
 </script>

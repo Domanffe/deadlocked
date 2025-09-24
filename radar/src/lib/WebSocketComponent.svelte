@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Globals, WSData } from "./interfaces";
+    import type { Globals, WSData } from "./ts/interfaces";
 
     let { globals }: { globals: Globals } = $props();
 

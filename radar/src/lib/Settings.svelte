@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fade } from "svelte/transition";
     import Gear from "./Gear.svelte";
-    import type { Config } from "./interfaces";
+    import type { Config } from "./ts/interfaces";
 
     let open = $state(false);
 

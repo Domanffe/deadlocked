@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { Config, Globals, Vec2 } from "./interfaces";
-    import { MapData } from "./map_data";
+    import type { Config, Globals, Vec2 } from "./ts/interfaces";
+    import { MapData } from "./ts/map_data";
     import PlayerDot from "./PlayerDot.svelte";
 
     let { globals, settings }: { globals: Globals; settings: Config } = $props();

@@ -3,8 +3,8 @@
     import Radar from "./lib/Radar.svelte";
     import Settings from "./lib/Settings.svelte";
     import WebSocketComponent from "./lib/WebSocketComponent.svelte";
-    import type { Config, Globals } from "./lib/interfaces";
-    import { sampleData } from "./lib/sample_data";
+    import type { Config, Globals } from "./lib/ts/interfaces";
+    import { sampleData } from "./lib/ts/sample_data";
 
     let globals: Globals = {
         connected: false,
