@@ -6,7 +6,7 @@ import http from "http";
 const app = express();
 const PORT = 6346;
 
-app.use(express.static(path.join(import.meta.dirname, "public")));
+app.use(express.static(path.join(import.meta.dirname, "dist")));
 
 const server = http.createServer(app);
 

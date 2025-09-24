@@ -2,4 +2,4 @@
 
 cd radar
 npm install
-npm run dev
+npm run server
