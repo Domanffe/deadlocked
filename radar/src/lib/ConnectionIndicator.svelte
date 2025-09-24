@@ -1,11 +1,13 @@
 <script lang="ts">
-    export let state: { connected: boolean };
+    import type { Globals } from "./ts/interfaces";
+
+    let { globals }: { globals: Globals } = $props();
 </script>
 
 <div class="connection-indicator">
-    <span class={state.connected ? "green" : "red"}></span>
+    <span class={globals.connected ? "green" : "red"}></span>
     <p>
-        {#if state.connected}connected{:else}connecting...{/if}
+        {#if globals.connected}connected{:else}connecting...{/if}
     </p>
 </div>
 

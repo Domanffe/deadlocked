@@ -5,15 +5,17 @@
 
     let open = $state(false);
 
-    let { settings }: { settings: Config } = $props();
+    let { settings = $bindable() }: { settings: Config } = $props();
 </script>
 
 <div class="settings">
     <button onclick={() => (open = !open)}><Gear /></button>
     {#if open}
         <div class="settings-menu" transition:fade={{ duration: 200 }}>
-            <label>Team Color<input type="color" bind:value={settings.color_team} /></label>
-            <label>Enemy Color<input type="color" bind:value={settings.color_enemy} /></label>
+            <label><input type="checkbox" bind:checked={settings.show_team} />Show Team</label>
+            <label><input type="checkbox" bind:checked={settings.show_enemy_hp} />Show Enemy HP</label>
+            <label><input type="color" bind:value={settings.color_team} />Team Color</label>
+            <label><input type="color" bind:value={settings.color_enemy} />Enemy Color</label>
         </div>
     {/if}
 </div>
@@ -45,6 +47,9 @@
     }
 
     .settings-menu {
+        display: flex;
+        flex-direction: column;
+        align-items: start;
         background-color: var(--color-base);
         border-radius: 0.5rem;
         padding: 0.4rem 0.8rem;
@@ -54,6 +59,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.2rem;
+        cursor: pointer;
+    }
+
+    .settings-menu > label > input {
+        cursor: pointer;
     }
 
     .settings-menu > label > input[type="color"] {
@@ -63,5 +74,16 @@
         height: 1.2rem;
         width: 2.4rem;
         border-radius: 0.5rem;
+    }
+
+    .settings-menu > label > input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+        background-color: var(--color-highlight);
+
+        &:checked {
+            background-color: var(--color-blue);
+        }
     }
 </style>

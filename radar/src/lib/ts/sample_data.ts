@@ -4,7 +4,7 @@ export const sampleData: WSData = {
     players: [
         {
             steam_id: 0,
-            health: 30,
+            health: 80,
             armor: 60,
             position: { x: 0, y: 0, z: 0 },
             head: { x: 0, y: 0, z: 0 },

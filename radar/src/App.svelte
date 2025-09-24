@@ -1,12 +1,15 @@
 <script lang="ts">
     import ConnectionIndicator from "./lib/ConnectionIndicator.svelte";
+    import PlayerCard from "./lib/PlayerCard.svelte";
+    import PlayerList from "./lib/PlayerList.svelte";
     import Radar from "./lib/Radar.svelte";
     import Settings from "./lib/Settings.svelte";
     import WebSocketComponent from "./lib/WebSocketComponent.svelte";
     import type { Config, Globals } from "./lib/ts/interfaces";
+    import { PlayerListType } from "./lib/ts/player_list";
     import { sampleData } from "./lib/ts/sample_data";
 
-    let globals: Globals = {
+    let globals: Globals = $state({
         connected: false,
         current_player: null,
         data: sampleData /*{
@@ -21,29 +24,25 @@
             map_name: "",
             in_game: false,
         }*/,
-    };
-    let settings: Config = {
+    });
+    let settings: Config = $state({
         show_team: true,
         show_enemy_hp: false,
         color_team: "#6496f0",
         color_enemy: "#f06464",
-    };
+    });
 </script>
 
 <main>
     <WebSocketComponent {globals} />
-    <ConnectionIndicator state={globals} />
-    <Settings {settings} />
+    <ConnectionIndicator {globals} />
+    <Settings bind:settings />
     <div class="main">
-        <div class="player-list team-opponents">
-            <h1>Opponents</h1>
-        </div>
+        <PlayerList {globals} type={PlayerListType.Enemy} />
 
         <Radar {globals} {settings} />
 
-        <div class="player-list team-friendlies">
-            <h1>Teammates</h1>
-        </div>
+        <PlayerList {globals} type={PlayerListType.Friendly} />
     </div>
 </main>
 
@@ -99,32 +98,9 @@
         grid-template-columns: 1fr 3fr 1fr;
     }
 
-    .player-list {
-        border-radius: 1rem;
-        background-color: var(--color-base);
-    }
-
-    .player-list > h1 {
-        padding: 0.4rem 0.8rem;
-        margin: 0;
-        border-bottom: 1px solid var(--color-highlight);
-    }
-
-    .team-opponents > h1 {
-        color: var(--color-red);
-    }
-
-    .team-friendlies > h1 {
-        color: var(--color-blue);
-    }
-
     @media (max-width: 64rem) {
         .main {
             grid-template-columns: 1fr;
-        }
-
-        .player-list {
-            display: none;
         }
     }
 </style>
