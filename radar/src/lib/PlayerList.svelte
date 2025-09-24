@@ -10,7 +10,7 @@
     <p>
         {#if type === PlayerListType.Friendly}Teammates{:else}Opponents{/if}
     </p>
-    {#each globals.data.players as player}
+    {#each type === PlayerListType.Friendly ? globals.data.friendlies : globals.data.players as player}
         <PlayerCard {player} />
     {/each}
 </div>
@@ -26,7 +26,6 @@
         font-size: 1.2rem;
         padding: 0.4rem 0.8rem;
         margin: 0;
-        border-bottom: 1px solid var(--color-highlight);
     }
 
     .team-enemy > p {

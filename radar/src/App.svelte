@@ -74,6 +74,10 @@
         --color-purple: #b478f0;
     }
 
+    :global(*) {
+        box-sizing: border-box;
+    }
+
     :global(body) {
         background-color: var(--color-backdrop);
         color: var(--color-text);

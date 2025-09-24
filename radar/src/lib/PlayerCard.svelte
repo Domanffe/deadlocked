@@ -13,10 +13,12 @@
     <p>{player.name}</p>
     <div class="bars">
         <div class="bar health-bar">
-            <div class="bar-inner" style:width={`${player.health}%`} style:background-color={hp_bg}></div>
+            <div class="bar-inner" style:width={`${health}%`} style:background-color={hp_bg}></div>
+            <div class="bar-number">{health}</div>
         </div>
         <div class="bar armor-bar">
             <div class="bar-inner" style:width={`${player.armor}%`} style:background-color="var(--color-blue)"></div>
+            <div class="bar-number">{player.armor}</div>
         </div>
     </div>
 </div>
@@ -30,6 +32,7 @@
         padding: 0.2rem 0.5rem;
         gap: 0.5rem;
         padding-bottom: 0.5rem;
+        border-top: 2px solid var(--color-highlight);
     }
 
     .card > p {
@@ -57,10 +60,22 @@
         display: flex;
         flex-direction: row;
         background-color: var(--color-highlight);
+        position: relative;
     }
 
     .bar-inner {
         height: 100%;
         border-radius: 0.2rem;
+    }
+
+    .bar-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .health-bar > .bar-number {
+        mix-blend-mode: difference;
     }
 </style>
