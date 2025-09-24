@@ -1,15 +1,24 @@
 <script lang="ts">
-    import { fade } from "svelte/transition";
-    import Gear from "./Gear.svelte";
     import ConnectionIndicator from "./ConnectionIndicator.svelte";
     import Settings from "./Settings.svelte";
+    import type { WSData } from "./data";
+    import WebSocketComponent from "./WebSocketComponent.svelte";
 
-    const location = window.location;
-
-    let connected = false;
-
-    let state = {
-        settingsOpen: false,
+    let state: { connected: boolean; current_player: number | null; data: WSData } = {
+        connected: false,
+        current_player: null,
+        data: {
+            players: [],
+            friendlies: [],
+            bomb: {
+                planted: false,
+                timer: 0,
+                being_defused: false,
+                position: undefined,
+            },
+            map_name: "",
+            in_game: false,
+        },
     };
     let settings = {
         showTeam: true,
@@ -20,7 +29,8 @@
 </script>
 
 <main>
-    <ConnectionIndicator {connected} />
+    <WebSocketComponent {state} />
+    <ConnectionIndicator {state} />
     <Settings {settings} />
     <div class="main">
         <div class="player-list team-opponents">
@@ -91,5 +101,15 @@
 
     .team-friendlies > h1 {
         color: var(--color-blue);
+    }
+
+    @media (max-width: 32rem) {
+        .main {
+            grid-template-columns: 1fr;
+        }
+
+        .player-list {
+            display: none;
+        }
     }
 </style>

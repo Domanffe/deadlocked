@@ -1,11 +1,11 @@
 <script lang="ts">
-    export let connected;
+    export let state: { connected: boolean };
 </script>
 
 <div class="connection-indicator">
-    <span class={connected ? "green" : "red"}></span>
+    <span class={state.connected ? "green" : "red"}></span>
     <p>
-        {#if connected}connected{:else}connecting...{/if}
+        {#if state.connected}connected{:else}connecting...{/if}
     </p>
 </div>
 

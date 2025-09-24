@@ -161,7 +161,7 @@ impl Radar {
 }
 
 fn message(data: &Data, uuid: &Uuid) -> String {
-    let json_obj = serde_json::json!({
+    let json = serde_json::json!({
         "kind": "update_data",
         "uuid": uuid,
         "players": data.players,
@@ -171,12 +171,7 @@ fn message(data: &Data, uuid: &Uuid) -> String {
         "in_game": data.in_game,
     });
 
-    let result = json_obj.to_string();
-
-    if result.len() < 100 {
-        println!("[WARN] Very short message: {}", result);
-    }
-    result
+    json.to_string()
 }
 
 #[allow(unused)]
