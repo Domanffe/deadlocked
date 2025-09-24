@@ -1,6 +1,6 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import ConnectionIndicator from "./lib/ConnectionIndicator.svelte";
-    import PlayerCard from "./lib/PlayerCard.svelte";
     import PlayerList from "./lib/PlayerList.svelte";
     import Radar from "./lib/Radar.svelte";
     import Settings from "./lib/Settings.svelte";
@@ -25,11 +25,23 @@
             in_game: false,
         }*/,
     });
+
     let settings: Config = $state({
         show_team: true,
         show_enemy_hp: false,
         color_team: "#6496f0",
         color_enemy: "#f06464",
+    });
+
+    onMount(() => {
+        const saved_settings = JSON.parse(localStorage.getItem("settings") || "{}");
+        console.info(saved_settings);
+        settings = { ...settings, ...saved_settings };
+
+        $effect(() => {
+            localStorage.setItem("settings", JSON.stringify(settings));
+            $inspect(settings);
+        });
     });
 </script>
 
