@@ -413,6 +413,16 @@ impl App {
                 }
                 ui.label("Velocity Threshold");
             });
+
+            if ui
+                .checkbox(
+                    &mut self.weapon_config().triggerbot.smoke_check,
+                    "Smoke Check",
+                )
+                .changed()
+            {
+                self.send_config();
+            }
         });
 
         collapsing_open(ui, "RCS", |ui| {
@@ -488,13 +498,6 @@ impl App {
                         self.send_config();
                     }
 
-                    if ui
-                        .checkbox(&mut self.config.player.head_circle, "Head Circle")
-                        .changed()
-                    {
-                        self.send_config();
-                    }
-
                     ui.horizontal(|ui| {
                         if ui
                             .add(
@@ -521,6 +524,20 @@ impl App {
             {
                 self.send_config();
             }
+
+            egui::ComboBox::new("esp_hotkey", "ESP Hotkey")
+                .selected_text(format!("{:?}", self.config.player.esp_hotkey))
+                .show_ui(ui, |ui| {
+                    for key_code in KeyCode::iter() {
+                        let text = format!("{:?}", &key_code);
+                        if ui
+                            .selectable_value(&mut self.config.player.esp_hotkey, key_code, text)
+                            .clicked()
+                        {
+                            self.send_config();
+                        }
+                    }
+                });
 
             egui::ComboBox::new("draw_box", "Box")
                 .selected_text(format!("{:?}", self.config.player.draw_box))
@@ -563,6 +580,13 @@ impl App {
                         }
                     }
                 });
+
+            if ui
+                .checkbox(&mut self.config.player.head_circle, "Head Circle")
+                .changed()
+            {
+                self.send_config();
+            }
         });
     }
 
@@ -1115,7 +1139,7 @@ impl App {
             );
         }
 
-        if self.config.player.enabled {
+        if data.wallhack_active {
             for player in &data.players {
                 self.player_box(&painter, player, data);
                 self.skeleton(&painter, player, data);

@@ -13,8 +13,8 @@ use crate::{
     config::{AimbotConfig, Config, RcsConfig, TriggerbotConfig, TriggerbotMode},
     constants::cs2::{self, TEAM_CT, TEAM_T},
     cs2::{
-        bones::Bones, offsets::Offsets, planted_c4::PlantedC4, smoke::Smoke, target::Target,
-        triggerbot::Triggerbot, weapon::Weapon,
+        bones::Bones, esp_toggle::EspToggle, offsets::Offsets, planted_c4::PlantedC4, smoke::Smoke,
+        target::Target, triggerbot::Triggerbot, weapon::Weapon,
     },
     data::{Data, PlayerData},
     game::Game,
@@ -27,6 +27,7 @@ use crate::{
 
 mod aimbot;
 pub mod bones;
+mod esp_toggle;
 mod fov_changer;
 mod no_flash;
 mod offsets;
@@ -50,6 +51,7 @@ pub struct CS2 {
     entities: Vec<Entity>,
     recoil: Recoil,
     trigger: Triggerbot,
+    wallhack: EspToggle,
     weapon: Weapon,
 }
 
@@ -102,6 +104,7 @@ impl Game for CS2 {
 
         self.no_flash(config);
         self.fov_changer(config);
+        self.esp_toggle(config);
 
         self.rcs(config, mouse);
         self.triggerbot(config);
@@ -208,6 +211,7 @@ impl Game for CS2 {
         } else {
             false
         };
+        data.wallhack_active = self.esp_enabled(config);
 
         data.view_matrix = self.process.read::<Mat4>(self.offsets.direct.view_matrix);
 
@@ -234,6 +238,7 @@ impl CS2 {
             entities: Vec::with_capacity(128),
             recoil: Recoil::default(),
             trigger: Triggerbot::default(),
+            wallhack: EspToggle::default(),
             weapon: Weapon::default(),
         }
     }

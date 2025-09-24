@@ -9,6 +9,7 @@ use crate::{
     math::angles_to_fov,
     mouse::Mouse,
 };
+use strum::IntoEnumIterator;
 
 #[derive(Debug, Default)]
 pub struct Triggerbot {
@@ -26,7 +27,6 @@ impl CS2 {
             return;
         }
 
-        // button state
         let button_state = self.is_button_down(&hotkey);
         if config.mode == TriggerbotMode::Hold && !button_state {
             return;
@@ -60,7 +60,42 @@ impl CS2 {
             return;
         }
 
-        let Some(player) = local_player.crosshair_entity(self) else {
+        let player = if let Some(crosshair_player) = local_player.crosshair_entity(self) {
+            crosshair_player
+        } else if !config.smoke_check {
+            let view_angles = local_player.view_angles(self);
+            let mut best_player: Option<Player> = None;
+            let mut best_fov = 1.5;
+
+            for player in &self.players {
+                if !self.is_ffa() && player.team(self) == local_player.team(self) {
+                    continue;
+                }
+
+                if !player.is_valid(self) {
+                    continue;
+                }
+
+                for bone in Bones::iter() {
+                    let bone_pos = player.bone_position(self, bone.u64());
+                    let angle = self.angle_to_target(&local_player, &bone_pos, &Vec2::ZERO);
+                    let fov = angles_to_fov(&view_angles, &angle);
+
+                    if fov < best_fov {
+                        best_fov = fov;
+                        best_player = Some(*player);
+                    }
+                }
+            }
+
+            if let Some(player) = best_player
+                && player.visible(self, &local_player)
+            {
+                player
+            } else {
+                return;
+            }
+        } else {
             return;
         };
 
