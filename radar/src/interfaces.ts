@@ -1,3 +1,16 @@
+export interface Config {
+    show_team: boolean;
+    show_enemy_hp: boolean;
+    color_team: string;
+    color_enemy: string;
+}
+
+export interface State {
+    connected: boolean;
+    current_player: boolean;
+    data: WSData;
+}
+
 export interface WSData {
     players: PlayerData[];
     friendlies: PlayerData[];

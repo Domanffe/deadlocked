@@ -1,10 +1,11 @@
 <script lang="ts">
     import ConnectionIndicator from "./ConnectionIndicator.svelte";
+    import Radar from "./Radar.svelte";
     import Settings from "./Settings.svelte";
-    import type { WSData } from "./data";
     import WebSocketComponent from "./WebSocketComponent.svelte";
+    import { Config, State } from "./interfaces";
 
-    let state: { connected: boolean; current_player: number | null; data: WSData } = {
+    let state: State = {
         connected: false,
         current_player: null,
         data: {
@@ -20,11 +21,11 @@
             in_game: false,
         },
     };
-    let settings = {
-        showTeam: true,
-        showEnemyHP: false,
-        colorTeam: "#6496f0",
-        colorEnemy: "#f06464",
+    let settings: Config = {
+        show_team: true,
+        show_enemy_hp: false,
+        color_team: "#6496f0",
+        color_enemy: "#f06464",
     };
 </script>
 
@@ -37,7 +38,7 @@
             <h1>Opponents</h1>
         </div>
 
-        <div class="radar"></div>
+        <Radar {state} {settings} />
 
         <div class="player-list team-friendlies">
             <h1>Teammates</h1>

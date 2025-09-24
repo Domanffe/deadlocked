@@ -1,17 +1,18 @@
 <script lang="ts">
     import { fade } from "svelte/transition";
     import Gear from "./Gear.svelte";
+    import { Config } from "./interfaces";
 
     let open = false;
-    export let settings: { colorTeam: string; colorEnemy: string };
+    export let settings: Config;
 </script>
 
 <div class="settings">
     <button on:click={() => (open = !open)}><Gear /></button>
     {#if open}
         <div class="settings-menu" transition:fade={{ duration: 200 }}>
-            <label>Team Color<input type="color" bind:value={settings.colorTeam} /></label>
-            <label>Enemy Color<input type="color" bind:value={settings.colorEnemy} /></label>
+            <label>Team Color<input type="color" bind:value={settings.color_team} /></label>
+            <label>Enemy Color<input type="color" bind:value={settings.color_enemy} /></label>
         </div>
     {/if}
 </div>
