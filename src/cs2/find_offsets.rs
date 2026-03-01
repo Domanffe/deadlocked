@@ -19,7 +19,7 @@ impl CS2 {
         offsets.library.sdl = self.process.module_base_address(cs2::SDL_LIB)?;
         offsets.library.schema = self.process.module_base_address(cs2::SCHEMA_LIB)?;
 
-        let client_module = self.process.dump_module(offsets.library.client);
+        let client_module = self.process.dump_module(cs2::CLIENT_LIB)?;
 
         let Some(resource_offset) = self
             .process
@@ -130,7 +130,7 @@ impl CS2 {
         };
         offsets.convar.sensitivity = sensitivity_address;
 
-        let schema = Schema::new(&self.process, offsets.library.schema)?;
+        let schema = Schema::new(&self.process, cs2::SCHEMA_LIB)?;
         let client = schema.get_library(cs2::CLIENT_LIB)?;
 
         offsets.controller.steam_id = client.get("CBasePlayerController", "m_steamID")?;

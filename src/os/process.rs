@@ -331,54 +331,12 @@ impl Process {
         self.module_range(module_name).map(|(base, _)| base)
     }
 
-    pub fn dump_module(&self, address: u64) -> Module {
-        let module_size = self.module_size_from_maps(address);
-        Module {
-            base: address,
-            data: self.read_bytes(address, module_size),
-        }
-    }
-
-    fn module_size_from_maps(&self, address: u64) -> u64 {
-        let Ok(maps) = File::open(format!("/proc/{}/maps", self.pid)) else {
-            return 0;
-        };
-        let mut end = address;
-        let mut last_name = String::new();
-
-        for line in BufReader::new(maps).lines() {
-            let Ok(line) = line else {
-                continue;
-            };
-            let Some((range, rest)) = line.split_once(' ') else {
-                continue;
-            };
-            let Some((start, stop)) = range.split_once('-') else {
-                continue;
-            };
-            let Ok(start) = u64::from_str_radix(start, 16) else {
-                continue;
-            };
-            let Ok(stop) = u64::from_str_radix(stop, 16) else {
-                continue;
-            };
-
-            if start == address {
-                last_name = rest.to_owned();
-                end = stop;
-            } else if start >= address && end == start {
-                if rest.contains('/') && rest == last_name {
-                    end = stop;
-                } else if rest.trim().is_empty() && last_name.trim().is_empty() {
-                    end = stop;
-                } else {
-                    break;
-                }
-            } else if start > address && end != start {
-                break;
-            }
-        }
-        end - address
+    pub fn dump_module(&self, name: &str) -> Option<Module> {
+        let (base, size) = self.module_range(name)?;
+        Some(Module {
+            base,
+            data: self.read_bytes(base, size),
+        })
     }
 
     pub fn get_relative_address(

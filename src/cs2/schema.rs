@@ -9,8 +9,8 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn new(process: &Process, schema_module: u64) -> Option<Self> {
-        let module = process.dump_module(schema_module);
+    pub fn new(process: &Process, schema_module_name: &str) -> Option<Self> {
+        let module = process.dump_module(schema_module_name)?;
         let schema_system = module.scan(
             "48 8D 3D ? ? ? ? E8 ? ? ? ? 48 8B BD ? ? ? ? 31 F6 E8 ? ? ? ? E9",
         )?;
