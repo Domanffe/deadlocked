@@ -1,12 +1,5 @@
 # deadlocked
 
-<a href="https://matrix.to/#/%23open-source-cs2-hacking:matrix.org">
-  <img src="https://img.shields.io/matrix/open-source-cs2-hacking%3Amatrix.org?style=for-the-badge&logo=matrix&label=Matrix" alt="Matrix invite" />
-</a>
-<a href="https://discord.gg/eXjG4Ar9Sx">
-  <img src="https://img.shields.io/discord/1333541580249890949?style=for-the-badge&logo=discord&logoColor=white&label=Discord" alt="Discord invite" />
-</a>
-
 simple cs2 aimbot and esp, for linux only.
 
 ## Setup
@@ -14,7 +7,7 @@ simple cs2 aimbot and esp, for linux only.
 ```bash
 ./setup.sh
 # Restart your machine (required)
-git clone https://github.com/avitran0/deadlocked
+git clone https://github.com/Domanffe/deadlocked
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 

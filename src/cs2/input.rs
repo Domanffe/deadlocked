@@ -1,4 +1,4 @@
-use utils::bitset::BitSet;
+use crate::utils::bitset::BitSet;
 
 use crate::{
     cs2::{key_codes::KeyCode, offsets::Offsets},

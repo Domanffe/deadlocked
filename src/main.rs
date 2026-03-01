@@ -1,7 +1,8 @@
+pub mod utils;
 use std::sync::Arc;
 
 use crossbeam::channel::{bounded, unbounded};
-use utils::{
+use crate::utils::{
     log::{self, Logger, LoggerOptions},
     sync::Mutex,
 };

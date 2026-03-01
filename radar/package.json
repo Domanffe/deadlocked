@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "tsx radar.ts"
     },
-    "author": "avitran0",
+    "author": "Domanffe",
     "license": "GPL-3.0-only",
     "description": "",
     "dependencies": {

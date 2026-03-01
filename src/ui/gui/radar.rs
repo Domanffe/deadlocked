@@ -1,5 +1,5 @@
 use egui::Ui;
-use utils::log;
+use crate::utils::log;
 use uuid::Uuid;
 
 use crate::{

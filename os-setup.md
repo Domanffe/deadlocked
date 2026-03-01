@@ -21,7 +21,7 @@ sudo reboot
 After reboot:
 
 ```bash
-git clone --recursive https://github.com/avitran0/deadlocked
+git clone --recursive https://github.com/Domanffe/deadlocked
 cd deadlocked
 direnv allow
 cargo run --release
@@ -40,6 +40,6 @@ Everything is configured in `flake.nix` and `nix/shell.nix`.
 ```bash
 grep -E '^input:' /usr/lib/group | sudo tee -a /etc/group && sudo usermod -aG input $USER
 # Restart your machine (required)
-git clone --recursive https://github.com/avitran0/deadlocked
+git clone --recursive https://github.com/Domanffe/deadlocked
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```

@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use utils::log;
+use crate::utils::log;
 
 pub fn install_crash_handler() {
     let default_hook = panic::take_hook();

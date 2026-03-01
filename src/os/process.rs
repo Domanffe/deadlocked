@@ -9,7 +9,7 @@ use std::{
 
 use bytemuck::Pod;
 use nix::libc::{self, iovec, process_vm_readv};
-use utils::log;
+use crate::utils::log;
 
 use crate::constants::{cs2, elf};
 

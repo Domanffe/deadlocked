@@ -1,5 +1,5 @@
 use egui::{Align, Context};
-use utils::log;
+use crate::utils::log;
 
 use crate::{
     config::{WeaponConfig, write_config},

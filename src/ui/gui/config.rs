@@ -1,5 +1,5 @@
 use egui::{Align, Button, Context, Ui};
-use utils::log;
+use crate::utils::log;
 
 use crate::{
     config::{

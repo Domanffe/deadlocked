@@ -9,7 +9,7 @@ use std::{
 
 use glam::Vec2;
 use nix::{ioctl_none, ioctl_write_int, ioctl_write_ptr, libc::c_ulong};
-use utils::log;
+use crate::utils::log;
 
 #[derive(Debug, Clone, Copy)]
 struct Timeval {

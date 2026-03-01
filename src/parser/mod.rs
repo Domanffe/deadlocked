@@ -8,7 +8,7 @@ use std::{
 
 use bytemuck::AnyBitPattern;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use utils::log;
+use crate::utils::log;
 
 use crate::{
     os::crash::{self, report_error},
