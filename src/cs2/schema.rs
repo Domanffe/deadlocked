@@ -10,9 +10,9 @@ pub struct Schema {
 
 impl Schema {
     pub fn new(process: &Process, schema_module: u64) -> Option<Self> {
-        let schema_system = process.scan(
+        let module = process.dump_module(schema_module);
+        let schema_system = module.scan(
             "48 8D 3D ? ? ? ? E8 ? ? ? ? 48 8B BD ? ? ? ? 31 F6 E8 ? ? ? ? E9",
-            schema_module,
         )?;
         let schema_system = process.get_relative_address(schema_system, 3, 7);
 

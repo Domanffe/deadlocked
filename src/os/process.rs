@@ -309,53 +309,12 @@ impl Process {
         None
     }
 
-    pub fn dump_module(&self, address: u64) -> Vec<u8> {
+    pub fn dump_module(&self, address: u64) -> Module {
         let module_size = self.module_size(address);
-        self.read_bytes(address, module_size)
-    }
-
-    pub fn scan(&self, pattern: &str, base_address: u64) -> Option<u64> {
-        let mut bytes = Vec::with_capacity(8);
-        let mut mask = Vec::with_capacity(8);
-
-        for token in pattern.split_whitespace() {
-            if token == "?" || token == "??" {
-                bytes.push(0x00);
-                mask.push(0x00);
-            } else if token.len() == 2 {
-                match u8::from_str_radix(token, 16) {
-                    Ok(b) => {
-                        bytes.push(b);
-                        mask.push(0xFF);
-                    }
-                    Err(_) => {
-                        log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
-                    }
-                }
-            } else {
-                log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
-            }
+        Module {
+            base: address,
+            data: self.read_bytes(address, module_size),
         }
-
-        let module = self.dump_module(base_address);
-        if module.len() < 500 {
-            return None;
-        }
-
-        let pattern_length = bytes.len();
-        let stop_index = module.len() - pattern_length;
-        'outer: for i in 0..stop_index {
-            for j in 0..pattern_length {
-                if mask[j] == 0xFF && module[i + j] != bytes[j] {
-                    continue 'outer;
-                }
-            }
-            let address = base_address + i as u64;
-            log::debug!("found pattern {pattern} at {address}");
-            return Some(address);
-        }
-        log::debug!("pattern {pattern} not found, might be outdated");
-        None
     }
 
     pub fn get_relative_address(
@@ -524,5 +483,57 @@ impl Process {
         } else {
             Some(process)
         }
+    }
+}
+
+pub struct Module {
+    pub base: u64,
+    pub data: Vec<u8>,
+}
+
+impl Module {
+    pub fn scan(&self, pattern: &str) -> Option<u64> {
+        let mut bytes = Vec::with_capacity(8);
+        let mut mask = Vec::with_capacity(8);
+
+        for token in pattern.split_whitespace() {
+            if token == "?" || token == "??" {
+                bytes.push(0x00);
+                mask.push(0x00);
+            } else if token.len() == 2 {
+                match u8::from_str_radix(token, 16) {
+                    Ok(b) => {
+                        bytes.push(b);
+                        mask.push(0xFF);
+                    }
+                    Err(_) => {
+                        log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
+                    }
+                }
+            } else {
+                log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
+            }
+        }
+
+        if self.data.len() < bytes.len() {
+            return None;
+        }
+
+        let pattern_length = bytes.len();
+        let stop_index = self.data.len() - pattern_length;
+
+        'outer: for i in 0..stop_index {
+            for j in 0..pattern_length {
+                if mask[j] == 0xFF && self.data[i + j] != bytes[j] {
+                    continue 'outer;
+                }
+            }
+            let address = self.base + i as u64;
+            log::debug!("found pattern {pattern} at {address:X}");
+            return Some(address);
+        }
+
+        log::debug!("pattern {pattern} not found");
+        None
     }
 }
