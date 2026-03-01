@@ -1,186 +1,58 @@
-use egui::{DragValue, Ui};
+use egui::Ui;
 
 use crate::ui::{
     app::App,
-    gui::helpers::{collapsing_open, color_picker},
+    gui::helpers::{checkbox, color_picker, scroll, section},
 };
 
 impl App {
     pub fn hud_settings(&mut self, ui: &mut Ui) {
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, true])
-            .id_salt("hud")
-            .show(ui, |ui| {
+        let mut grenade_trails = self.config.hud.grenade_trails;
+        scroll(ui, "hud_settings", |ui| {
+            ui.columns(2, |cols| {
+                cols[0].vertical(|ui| self.hud_left(ui));
+                cols[1].vertical(|ui| self.hud_right(ui));
+            });
+
+            section(ui, "Grenade Trails", Some(&mut grenade_trails), |ui| {
                 ui.columns(2, |cols| {
                     let left = &mut cols[0];
-                    self.hud_left(left);
+                    if color_picker(left, "Smoke", &mut self.config.hud.smoke_trail_color) { self.send_config(); }
+                    if color_picker(left, "Flash", &mut self.config.hud.flash_trail_color) { self.send_config(); }
+                    if color_picker(left, "Decoy", &mut self.config.hud.decoy_trail_color) { self.send_config(); }
+
                     let right = &mut cols[1];
-                    self.hud_right(right);
-                });
-
-                collapsing_open(ui, "Colors", |ui| {
-                    if color_picker(ui, "Text Color", &mut self.config.hud.text_color) {
-                        self.send_config();
-                    }
-
-                    if color_picker(ui, "Crosshair Color", &mut self.config.hud.crosshair_color) {
-                        self.send_config();
-                    }
-                });
-
-                ui.collapsing("Grenade Trails", |ui| {
-                    if ui
-                        .checkbox(&mut self.config.hud.grenade_trails, "Grenade Trails")
-                        .changed()
-                    {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "Smoke Trail Color",
-                        &mut self.config.hud.smoke_trail_color,
-                    ) {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "Molotov Trail Color",
-                        &mut self.config.hud.molotov_trail_color,
-                    ) {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "Incendiary Trail Color",
-                        &mut self.config.hud.incendiary_trail_color,
-                    ) {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "Flash Trail Color",
-                        &mut self.config.hud.flash_trail_color,
-                    ) {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "HE Grenade Trail Color",
-                        &mut self.config.hud.he_trail_color,
-                    ) {
-                        self.send_config();
-                    }
-
-                    if color_picker(
-                        ui,
-                        "Decoy Trail Color",
-                        &mut self.config.hud.decoy_trail_color,
-                    ) {
-                        self.send_config();
-                    }
+                    if color_picker(right, "Molotov", &mut self.config.hud.molotov_trail_color) { self.send_config(); }
+                    if color_picker(right, "Incendiary", &mut self.config.hud.incendiary_trail_color) { self.send_config(); }
+                    if color_picker(right, "HE Grenade", &mut self.config.hud.he_trail_color) { self.send_config(); }
                 });
             });
+
+            if self.config.hud.grenade_trails != grenade_trails {
+                self.config.hud.grenade_trails = grenade_trails;
+                self.send_config();
+            }
+
+            section(ui, "Global HUD Colors", None, |ui| {
+                ui.columns(2, |cols| {
+                    if color_picker(&mut cols[0], "Text Color", &mut self.config.hud.text_color) { self.send_config(); }
+                    if color_picker(&mut cols[1], "Crosshair", &mut self.config.hud.crosshair_color) { self.send_config(); }
+                });
+            });
+        });
     }
 
     fn hud_left(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "HUD", |ui| {
-            if ui
-                .checkbox(&mut self.config.hud.bomb_timer, "Bomb Timer")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.hud.fov_circle, "FOV Circle")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.hud.sniper_crosshair, "Sniper Crosshair")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.hud.dropped_weapons, "Dropped Weapons")
-                .changed()
-            {
-                self.send_config();
-            }
+        section(ui, "General", None, |ui| {
+            if checkbox(ui, "Bomb Timer", &mut self.config.hud.bomb_timer) { self.send_config(); }
+            if checkbox(ui, "FOV Circle", &mut self.config.hud.fov_circle) { self.send_config(); }
+            if checkbox(ui, "Sniper Crosshair", &mut self.config.hud.sniper_crosshair) { self.send_config(); }
         });
     }
 
     fn hud_right(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "Appearance", |ui| {
-            if ui
-                .checkbox(&mut self.config.hud.text_outline, "Text Outline")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            ui.horizontal(|ui| {
-                if ui
-                    .add(
-                        DragValue::new(&mut self.config.hud.line_width)
-                            .range(0.1..=8.0)
-                            .speed(0.02)
-                            .max_decimals(1),
-                    )
-                    .changed()
-                {
-                    self.send_config();
-                }
-                ui.label("Line Width");
-            });
-
-            ui.horizontal(|ui| {
-                if ui
-                    .add(
-                        DragValue::new(&mut self.config.hud.font_size)
-                            .range(1.0..=99.0)
-                            .speed(0.2)
-                            .max_decimals(1),
-                    )
-                    .changed()
-                {
-                    self.send_config();
-                }
-                ui.label("Font Size");
-            });
-
-            ui.horizontal(|ui| {
-                if ui
-                    .add(
-                        DragValue::new(&mut self.config.hud.icon_size)
-                            .range(1.0..=99.0)
-                            .speed(0.2)
-                            .max_decimals(1),
-                    )
-                    .changed()
-                {
-                    self.send_config();
-                }
-                ui.label("Icon Size");
-            });
-        });
-
-        ui.collapsing("Advanced", |ui| {
-            if ui
-                .checkbox(&mut self.config.hud.debug, "Debug Overlay")
-                .changed()
-            {
-                self.send_config();
-            }
+        section(ui, "World ESP", None, |ui| {
+            if checkbox(ui, "Dropped Weapons", &mut self.config.hud.dropped_weapons) { self.send_config(); }
         });
     }
 }

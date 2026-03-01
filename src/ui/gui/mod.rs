@@ -46,42 +46,77 @@ impl App {
 
     fn gui(&mut self, ctx: &Context) {
         ctx.set_pixels_per_point(self.display_scale);
+
         egui::SidePanel::left("sidebar")
             .resizable(false)
+            .default_width(160.0)
+            .frame(egui::Frame::NONE.fill(Colors::BACKDROP).inner_margin(10.0))
             .show(ctx, |ui| {
-                ui.selectable_value(&mut self.current_tab, Tab::Aimbot, "\u{f04fe} Aimbot");
-                ui.selectable_value(&mut self.current_tab, Tab::Player, "\u{f0013} Player");
-                ui.selectable_value(&mut self.current_tab, Tab::Hud, "\u{f0379} Hud");
-                ui.selectable_value(&mut self.current_tab, Tab::Radar, "\u{f0437} Radar");
-                ui.selectable_value(&mut self.current_tab, Tab::Grenades, "\u{f0691} Grenades");
-                ui.selectable_value(&mut self.current_tab, Tab::Unsafe, "\u{f0ce6} Unsafe");
-                ui.selectable_value(&mut self.current_tab, Tab::Config, "\u{f168b} Config");
+                ui.vertical_centered(|ui| {
+                    ui.add_space(10.0);
+                    ui.heading(egui::RichText::new("DEADLOCKED").strong().color(Colors::ACCENT).size(20.0));
+                    ui.add_space(20.0);
+                });
 
-                ui.with_layout(egui::Layout::bottom_up(Align::Min), |ui| {
-                    if ui.button("Report Issue").clicked() {
+                ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                    self.sidebar_button(ui, Tab::Aimbot, "\u{f04fe}", "Aimbot");
+                    self.sidebar_button(ui, Tab::Player, "\u{f0013}", "Player");
+                    self.sidebar_button(ui, Tab::Hud, "\u{f0379}", "Hud");
+                    self.sidebar_button(ui, Tab::Radar, "\u{f0437}", "Radar");
+                    self.sidebar_button(ui, Tab::Grenades, "\u{f0691}", "Grenades");
+                    self.sidebar_button(ui, Tab::Unsafe, "\u{f0ce6}", "Unsafe");
+                    self.sidebar_button(ui, Tab::Config, "\u{f168b}", "Config");
+                });
+
+                ui.with_layout(egui::Layout::bottom_up(Align::Center), |ui| {
+                    ui.add_space(10.0);
+                    if ui.button(egui::RichText::new("Report Issue").small()).clicked() {
                         let _ = std::process::Command::new("xdg-open")
-                            .arg("https://github.com/avitran0/deadlocked/issues")
+                            .arg("https://github.com/Domanffe/deadlocked/issues")
                             .status();
                     }
 
-                    ui.label(egui::RichText::new(format!("{}", self.game_status)).color(
-                        match self.game_status {
-                            GameStatus::Working => Colors::GREEN,
-                            GameStatus::NotStarted => Colors::YELLOW,
-                        },
-                    ));
+                    ui.add_space(10.0);
+                    let (status_text, status_color) = match self.game_status {
+                        GameStatus::Working => ("System Live", Colors::GREEN),
+                        GameStatus::NotStarted => ("Waiting for CS2", Colors::YELLOW),
+                    };
+
+                    ui.horizontal(|ui| {
+                        ui.add(egui::Label::new(egui::RichText::new("●").color(status_color)));
+                        ui.label(egui::RichText::new(status_text).small().color(Colors::SUBTEXT));
+                    });
+                    ui.separator();
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| match self.current_tab {
-            Tab::Aimbot => self.aimbot_settings(ui),
-            Tab::Player => self.player_settings(ui),
-            Tab::Hud => self.hud_settings(ui),
-            Tab::Radar => self.radar_settings(ui),
-            Tab::Grenades => self.grenade_settings(ui),
-            Tab::Unsafe => self.unsafe_settings(ui),
-            Tab::Config => self.config_settings(ui, ctx),
-        });
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE.fill(Colors::BASE).inner_margin(20.0))
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    match self.current_tab {
+                        Tab::Aimbot => self.aimbot_settings(ui),
+                        Tab::Player => self.player_settings(ui),
+                        Tab::Hud => self.hud_settings(ui),
+                        Tab::Radar => self.radar_settings(ui),
+                        Tab::Grenades => self.grenade_settings(ui),
+                        Tab::Unsafe => self.unsafe_settings(ui),
+                        Tab::Config => self.config_settings(ui, ctx),
+                    }
+                });
+            });
+    }
+
+    fn sidebar_button(&mut self, ui: &mut egui::Ui, tab: Tab, icon: &str, label: &str) {
+        let is_selected = self.current_tab == tab;
+        let color = if is_selected { Colors::WHITE } else { Colors::GRAY };
+        let text = egui::RichText::new(format!("{}  {}", icon, label))
+            .color(color)
+            .size(16.0);
+
+        if ui.add(egui::Button::new(text).selected(is_selected).fill(egui::Color32::TRANSPARENT)).clicked() {
+            self.current_tab = tab;
+        }
     }
 
     fn weapon_config(&mut self) -> &mut WeaponConfig {

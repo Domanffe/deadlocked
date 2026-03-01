@@ -3,7 +3,7 @@ use egui::{DragValue, Ui};
 use crate::ui::{
     app::App,
     gui::helpers::{
-        checkbox, checkbox_hover, collapsing_open, color_picker, combo_box, drag, keybind, scroll,
+        checkbox, checkbox_hover, color_picker, combo_box, drag, keybind, scroll, section,
     },
 };
 
@@ -11,46 +11,47 @@ impl App {
     pub fn player_settings(&mut self, ui: &mut Ui) {
         scroll(ui, "player", |ui| {
             ui.columns(2, |cols| {
-                let left = &mut cols[0];
-                self.player_left(left);
-                let right = &mut cols[1];
-                self.player_right(right);
+                cols[0].vertical(|ui| {
+                    self.player_left(ui);
+                });
+                cols[1].vertical(|ui| {
+                    self.player_right(ui);
+                });
             });
 
-            collapsing_open(ui, "Colors", |ui| {
-                if color_picker(
-                    ui,
-                    "Box (visible)",
-                    &mut self.config.player.box_visible_color,
-                ) {
-                    self.send_config();
-                }
+            section(ui, "Colors", None, |ui| {
+                ui.columns(2, |cols| {
+                    let left = &mut cols[0];
+                    let mut box_visible_color = self.config.player.box_visible_color;
+                    if color_picker(left, "Box (visible)", &mut box_visible_color) {
+                        self.config.player.box_visible_color = box_visible_color;
+                        self.send_config();
+                    }
 
-                if color_picker(
-                    ui,
-                    "Box (invisible)",
-                    &mut self.config.player.box_invisible_color,
-                ) {
-                    self.send_config();
-                }
+                    let mut box_invisible_color = self.config.player.box_invisible_color;
+                    if color_picker(left, "Box (invisible)", &mut box_invisible_color) {
+                        self.config.player.box_invisible_color = box_invisible_color;
+                        self.send_config();
+                    }
 
-                if color_picker(ui, "Skeleton", &mut self.config.player.skeleton_color) {
-                    self.send_config();
-                }
+                    let right = &mut cols[1];
+                    let mut skeleton_color = self.config.player.skeleton_color;
+                    if color_picker(right, "Skeleton", &mut skeleton_color) {
+                        self.config.player.skeleton_color = skeleton_color;
+                        self.send_config();
+                    }
+                });
             });
         });
     }
 
     fn player_left(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "Players", |ui| {
-            if checkbox(ui, "Enable", &mut self.config.player.enabled) {
-                self.send_config();
-            }
-
+        let mut enabled = self.config.player.enabled;
+        section(ui, "ESP", Some(&mut enabled), |ui| {
             if keybind(
                 ui,
                 "esp_hotkey",
-                "ESP Hotkey",
+                "Hot-Toggle",
                 &mut self.config.player.esp_hotkey,
             ) {
                 self.send_config();
@@ -58,25 +59,32 @@ impl App {
 
             if checkbox_hover(
                 ui,
-                "Show Friendlies",
-                "Only active in custom game modes (workshop/custom maps)",
+                "Show Team",
+                "Show friendlies in custom modes",
                 &mut self.config.player.show_friendlies,
             ) {
                 self.send_config();
             }
 
-            if combo_box(ui, "draw_box", "Box", &mut self.config.player.draw_box) {
+            if combo_box(ui, "draw_box", "Box Style", &mut self.config.player.draw_box) {
                 self.send_config();
             }
 
-            if combo_box(ui, "box_mode", "Box Mode", &mut self.config.player.box_mode) {
+            if combo_box(ui, "box_mode", "Box Fill", &mut self.config.player.box_mode) {
                 self.send_config();
             }
+        });
 
+        if self.config.player.enabled != enabled {
+            self.config.player.enabled = enabled;
+            self.send_config();
+        }
+
+        section(ui, "Skeleton", None, |ui| {
             if combo_box(
                 ui,
                 "draw_skeleton",
-                "Skeleton",
+                "Draw Bones",
                 &mut self.config.player.draw_skeleton,
             ) {
                 self.send_config();
@@ -89,65 +97,18 @@ impl App {
             if checkbox_hover(
                 ui,
                 "Visible Only",
-                "Only show visible players",
+                "Hide players behind walls",
                 &mut self.config.player.visible_only,
             ) {
                 self.send_config();
             }
         });
-    }
 
-    fn player_right(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "Info", |ui| {
-            if ui
-                .checkbox(&mut self.config.player.health_bar, "Health Bar")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.player.armor_bar, "Armor Bar")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.player.player_name, "Player Name")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.player.weapon_icon, "Weapon Icon")
-                .changed()
-            {
-                self.send_config();
-            }
-
-            if ui
-                .checkbox(&mut self.config.player.tags, "Show Tags")
-                .changed()
-            {
-                self.send_config();
-            }
-        });
-
-        ui.collapsing("Sound ESP", |ui| {
-            if checkbox_hover(
-                ui,
-                "Enabled",
-                "Show a circle under players when they make sound",
-                &mut self.config.player.sound.enabled,
-            ) {
-                self.send_config();
-            }
-
+        let mut sound_enabled = self.config.player.sound.enabled;
+        section(ui, "Sound ESP", Some(&mut sound_enabled), |ui| {
             if drag(
                 ui,
-                "Fadeout Time (s)",
+                "Fadeout (s)",
                 DragValue::new(&mut self.config.player.sound.fadeout_duration)
                     .range(0.0..=10.0)
                     .speed(0.01),
@@ -163,64 +124,47 @@ impl App {
                 self.send_config();
             }
 
-            ui.collapsing("Ranges", |ui| {
-                ui.horizontal(|ui| {
-                    let response = ui.add(
-                        egui::DragValue::new(&mut self.config.player.sound.footstep_diameter)
-                            .speed(10.0)
-                            .range(200.0..=6000.0),
-                    );
-
-                    ui.label("Footstep");
-
-                    if ui.button("↺").on_hover_text("Reset").clicked() {
-                        self.config.player.sound.footstep_diameter =
-                            crate::constants::cs2::SOUND_ESP_FOOTSTEP_DIAMETER_DEFAULT;
-                        self.send_config();
-                    }
-                    if response.changed() {
-                        self.send_config();
-                    }
-                });
-
-                ui.horizontal(|ui| {
-                    let response = ui.add(
-                        egui::DragValue::new(&mut self.config.player.sound.gunshot_diameter)
-                            .speed(10.0)
-                            .range(200.0..=10000.0),
-                    );
-
-                    ui.label("Gunshot");
-
-                    if ui.button("↺").on_hover_text("Reset").clicked() {
-                        self.config.player.sound.gunshot_diameter =
-                            crate::constants::cs2::SOUND_ESP_GUNSHOT_DIAMETER_DEFAULT;
-                        self.send_config();
-                    }
-                    if response.changed() {
-                        self.send_config();
-                    }
-                });
-
-                ui.horizontal(|ui| {
-                    let response = ui.add(
-                        egui::DragValue::new(&mut self.config.player.sound.weapon_diameter)
-                            .speed(10.0)
-                            .range(200.0..=6000.0),
-                    );
-
-                    ui.label("Weapon");
-
-                    if ui.button("↺").on_hover_text("Reset").clicked() {
-                        self.config.player.sound.weapon_diameter =
-                            crate::constants::cs2::SOUND_ESP_WEAPON_DIAMETER_DEFAULT;
-                        self.send_config();
-                    }
-                    if response.changed() {
-                        self.send_config();
-                    }
-                });
+            ui.add_space(4.0);
+            ui.label("Detection Ranges:");
+            ui.horizontal(|ui| {
+                if ui.add(DragValue::new(&mut self.config.player.sound.footstep_diameter).speed(10.0).range(200.0..=6000.0)).changed() { self.send_config(); }
+                ui.label("Footstep");
             });
+            ui.horizontal(|ui| {
+                if ui.add(DragValue::new(&mut self.config.player.sound.gunshot_diameter).speed(10.0).range(200.0..=10000.0)).changed() { self.send_config(); }
+                ui.label("Gunshot");
+            });
+        });
+
+        if self.config.player.sound.enabled != sound_enabled {
+            self.config.player.sound.enabled = sound_enabled;
+            self.send_config();
+        }
+    }
+
+    fn player_right(&mut self, ui: &mut Ui) {
+        section(ui, "Information", None, |ui| {
+            if checkbox(ui, "Name", &mut self.config.player.player_name) {
+                self.send_config();
+            }
+
+            if checkbox(ui, "Weapon Icon", &mut self.config.player.weapon_icon) {
+                self.send_config();
+            }
+
+            if checkbox(ui, "Show Tags", &mut self.config.player.tags) {
+                self.send_config();
+            }
+        });
+
+        section(ui, "Vitals", None, |ui| {
+            if checkbox(ui, "Health Bar", &mut self.config.player.health_bar) {
+                self.send_config();
+            }
+
+            if checkbox(ui, "Armor Bar", &mut self.config.player.armor_bar) {
+                self.send_config();
+            }
         });
     }
 }

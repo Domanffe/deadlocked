@@ -6,65 +6,64 @@ use crate::{
         BASE_PATH, CONFIG_PATH, Config, available_configs, delete_config, parse_config,
         write_config,
     },
-    ui::{app::App, color::Colors, gui::helpers::collapsing_open},
+    ui::{app::App, color::Colors, gui::helpers::{scroll, section}},
 };
 
 impl App {
     pub fn config_settings(&mut self, ui: &mut Ui, ctx: &Context) {
-        ui.columns(2, |cols| {
-            let left = &mut cols[0];
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, true])
-                .id_salt("config_left")
-                .show(left, |left| {
-                    self.config_left(left, ctx);
+        scroll(ui, "config_scroll", |ui| {
+            ui.columns(2, |cols| {
+                cols[0].vertical(|ui| {
+                    self.config_left(ui, ctx);
                 });
 
-            let right = &mut cols[1];
+                cols[1].vertical(|ui| {
+                    section(ui, "Saved Profiles", None, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut self.new_config_name);
+                            if ui.button("Create").clicked() && !self.new_config_name.is_empty() {
+                                if !self.new_config_name.ends_with(".toml") {
+                                    self.new_config_name.push_str(".toml");
+                                }
+                                let path = CONFIG_PATH.join(&self.new_config_name);
+                                write_config(&self.config, &path);
+                                self.new_config_name.clear();
+                                self.current_config = path;
+                                self.available_configs = available_configs();
+                            }
+                        });
 
-            collapsing_open(right, "Configs", |right| {
-                right.horizontal(|right| {
-                    if right.button("+").clicked() && !self.new_config_name.is_empty() {
-                        if !self.new_config_name.ends_with(".toml") {
-                            self.new_config_name.push_str(".toml");
-                        }
-                        let path = CONFIG_PATH.join(&self.new_config_name);
-                        write_config(&self.config, &path);
-                        self.new_config_name.clear();
-                        self.current_config = path;
-                        self.available_configs = available_configs();
-                    }
-                    right.text_edit_singleline(&mut self.new_config_name);
-                });
-
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, true])
-                    .id_salt("config_right")
-                    .show(right, |right| {
-                        self.config_right(right);
+                        ui.add_space(10.0);
+                        self.config_right(ui);
                     });
+                });
             });
         });
     }
 
     fn config_left(&mut self, ui: &mut Ui, ctx: &Context) {
-        collapsing_open(ui, "Config", |ui| {
-            if ui.button("Reset").clicked() {
-                self.config = Config::default();
-                self.send_config();
-                log::info!("loaded default config");
-            }
+        section(ui, "Active Profile", None, |ui| {
+            ui.label(format!("Current: {}", self.current_config.file_name().unwrap().to_str().unwrap()));
+            ui.add_space(4.0);
+            
+            ui.columns(2, |cols| {
+                if cols[0].button("Reset to Default").clicked() {
+                    self.config = Config::default();
+                    self.send_config();
+                    log::info!("loaded default config");
+                }
 
-            if ui.button("Config Folder").clicked() {
-                std::process::Command::new("xdg-open")
-                    .arg(BASE_PATH.as_os_str())
-                    .status()
-                    .unwrap();
-            }
+                if cols[1].button("Open Folder").clicked() {
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(BASE_PATH.as_os_str())
+                        .status();
+                }
+            });
         });
 
-        collapsing_open(ui, "Accent Color", |ui| {
-            egui::ComboBox::new("accent_color", "Accent Color")
+        section(ui, "Appearance", None, |ui| {
+            ui.label("Primary Accent Color:");
+            egui::ComboBox::from_id_salt("accent_picker")
                 .selected_text(
                     Colors::ACCENT_COLORS
                         .iter()
@@ -76,7 +75,8 @@ impl App {
                     for (name, color) in Colors::ACCENT_COLORS {
                         if ui
                             .add(
-                                Button::selectable(color == self.config.accent_color, name)
+                                Button::new(name)
+                                    .selected(color == self.config.accent_color)
                                     .fill(color),
                             )
                             .clicked()
@@ -96,17 +96,15 @@ impl App {
 
         for config in &self.available_configs {
             ui.horizontal(|ui| {
-                if ui
-                    .add(Button::selectable(
-                        *config == self.current_config,
-                        config.file_name().unwrap().to_str().unwrap(),
-                    ))
-                    .clicked()
-                {
+                let name = config.file_name().unwrap().to_str().unwrap();
+                let is_active = *config == self.current_config;
+                
+                if ui.selectable_label(is_active, name).clicked() {
                     clicked_config = Some(config.clone());
                 }
+                
                 ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                    if ui.button("\u{f0a7a}").clicked() {
+                    if ui.button("🗑").on_hover_text("Delete").clicked() {
                         delete = Some(config.clone());
                     }
                 });

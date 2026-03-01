@@ -250,43 +250,46 @@ fn prep_ctx(ctx: &mut egui::Context, accent_color: egui::Color32) {
 }
 
 fn gui_style(style: &mut Style, accent_color: egui::Color32) {
+    style.spacing.item_spacing = egui::vec2(10.0, 10.0);
+    style.spacing.window_margin = egui::vec2(15.0, 15.0).into();
+    style.spacing.button_padding = egui::vec2(10.0, 6.0);
+    style.spacing.indent = 20.0;
+
     style.interaction.selectable_labels = false;
     for font in style.text_styles.iter_mut() {
-        font.1.size = 16.0;
+        font.1.size = 14.5;
     }
-    //style.visuals.override_text_color = Some(Color32::WHITE);
+
+    style.visuals.window_corner_radius = 8.0.into();
+    style.visuals.widgets.active.corner_radius = 4.0.into();
+    style.visuals.widgets.hovered.corner_radius = 4.0.into();
+    style.visuals.widgets.inactive.corner_radius = 4.0.into();
+    style.visuals.widgets.noninteractive.corner_radius = 4.0.into();
 
     style.visuals.window_fill = Colors::BASE;
     style.visuals.panel_fill = Colors::BASE;
     style.visuals.extreme_bg_color = Colors::BACKDROP;
 
-    let bg_stroke = Stroke::new(1.0, Colors::SUBTEXT);
-    let fg_stroke = Stroke::new(1.0, Colors::TEXT);
-    let dark_stroke = Stroke::new(1.0, Colors::BASE);
+    style.visuals.selection.bg_fill = accent_color.gamma_multiply(0.4);
+    style.visuals.selection.stroke = Stroke::new(1.0, accent_color);
 
-    style.visuals.selection.bg_fill = accent_color;
-    style.visuals.selection.stroke = dark_stroke;
-
-    style.visuals.widgets.active.bg_fill = Colors::HIGHLIGHT;
-    style.visuals.widgets.active.bg_stroke = bg_stroke;
-    style.visuals.widgets.active.fg_stroke = fg_stroke;
-    style.visuals.widgets.active.weak_bg_fill = Colors::HIGHLIGHT;
-
-    style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT;
-    style.visuals.widgets.hovered.bg_stroke = bg_stroke;
-    style.visuals.widgets.hovered.fg_stroke = fg_stroke;
-    style.visuals.widgets.hovered.weak_bg_fill = Colors::HIGHLIGHT;
+    style.visuals.widgets.noninteractive.bg_fill = Colors::BASE;
+    style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, Colors::SUBTEXT);
 
     style.visuals.widgets.inactive.bg_fill = Colors::HIGHLIGHT;
-    style.visuals.widgets.inactive.fg_stroke = fg_stroke;
     style.visuals.widgets.inactive.weak_bg_fill = Colors::HIGHLIGHT;
+    style.visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, Colors::TEXT);
 
-    style.visuals.widgets.noninteractive.bg_fill = Colors::HIGHLIGHT;
-    style.visuals.widgets.noninteractive.fg_stroke = fg_stroke;
-    style.visuals.widgets.noninteractive.weak_bg_fill = Colors::HIGHLIGHT;
+    style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT.linear_multiply(1.2);
+    style.visuals.widgets.hovered.weak_bg_fill = Colors::HIGHLIGHT.linear_multiply(1.2);
+    style.visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, Colors::WHITE);
+    style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, accent_color);
+
+    style.visuals.widgets.active.bg_fill = accent_color;
+    style.visuals.widgets.active.weak_bg_fill = accent_color;
+    style.visuals.widgets.active.fg_stroke = Stroke::new(1.0, Colors::WHITE);
+    style.visuals.widgets.active.bg_stroke = Stroke::new(1.0, Colors::WHITE);
 
     style.visuals.widgets.open.bg_fill = Colors::HIGHLIGHT;
-    style.visuals.widgets.open.bg_stroke = bg_stroke;
-    style.visuals.widgets.open.fg_stroke = fg_stroke;
     style.visuals.widgets.open.weak_bg_fill = Colors::HIGHLIGHT;
 }

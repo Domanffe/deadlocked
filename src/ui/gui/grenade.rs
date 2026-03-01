@@ -6,60 +6,62 @@ use crate::{
         app::App,
         color::Colors,
         grenades::{Grenade, write_grenades},
-        gui::helpers::collapsing_open,
+        gui::helpers::{scroll, section},
     },
 };
 
 impl App {
     pub fn grenade_settings(&mut self, ui: &mut Ui) {
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, true])
-            .id_salt("hud")
-            .show(ui, |ui| {
-                if self.current_grenade.is_some() {
-                    self.edit_grenade(ui);
-                } else {
-                    self.record_grenade(ui);
-                }
+        scroll(ui, "grenade_settings", |ui| {
+            ui.columns(2, |cols| {
+                cols[0].vertical(|ui| {
+                    if self.current_grenade.is_some() {
+                        self.edit_grenade(ui);
+                    } else {
+                        self.record_grenade(ui);
+                    }
+                });
 
-                // grenade list
-                ui.collapsing("Grenade List", |ui| {
-                    self.grenade_list(ui);
+                cols[1].vertical(|ui| {
+                    section(ui, "Saved Lineups", None, |ui| {
+                        self.grenade_list(ui);
+                    });
                 });
             });
+        });
     }
 
     fn grenade_list(&mut self, ui: &mut Ui) {
         let mut should_write = false;
 
         let mut grenades = self.grenades.lock();
-        for (map, grenades) in grenades.iter_mut() {
+        if grenades.is_empty() {
+            ui.label(egui::RichText::new("No lineups saved yet.").small().color(Colors::GRAY));
+            return;
+        }
+
+        for (map, map_grenades) in grenades.iter_mut() {
             let mut delete_grenade_index = None;
 
-            ui.collapsing(map, |ui| {
-                for (index, grenade) in grenades.iter().enumerate() {
+            ui.collapsing(egui::RichText::new(map).strong(), |ui| {
+                for (index, grenade) in map_grenades.iter().enumerate() {
                     let active = match &self.current_grenade {
-                        Some(grenade) => &grenade.0 == map && grenade.1 == index,
+                        Some(g) => &g.0 == map && g.1 == index,
                         None => false,
                     };
                     ui.horizontal(|ui| {
                         if ui.selectable_label(active, &grenade.name).clicked() {
-                            self.current_grenade = match self.current_grenade {
-                                Some((ref g_map, ref g_index))
-                                    if g_map == map && *g_index == index =>
-                                {
-                                    None
-                                }
-                                _ => Some((map.to_owned(), index)),
-                            };
+                            self.current_grenade = if active { None } else { Some((map.to_owned(), index)) };
                         }
-                        if ui.button("\u{f0a7a}").clicked() {
-                            delete_grenade_index = Some(index);
-                        }
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("🗑").on_hover_text("Delete").clicked() {
+                                delete_grenade_index = Some(index);
+                            }
+                        });
                     });
                 }
                 if let Some(index) = delete_grenade_index {
-                    grenades.remove(index);
+                    map_grenades.remove(index);
                     should_write = true;
                 }
             });
@@ -71,88 +73,79 @@ impl App {
     }
 
     fn record_grenade(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "Add Grenade", |ui| {
+        section(ui, "Capture Lineup", None, |ui| {
             let data = self.data.lock();
 
             if !data.in_game {
-                ui.label("Not in game.");
+                ui.label(egui::RichText::new("Enter a game to record lineups.").small().color(Colors::YELLOW));
                 return;
             }
 
-            let grenade = if !GRENADES.contains(&data.local_player.weapon) {
-                ui.colored_label(Colors::YELLOW, "Invalid Weapon");
+            if !GRENADES.contains(&data.local_player.weapon) {
+                ui.colored_label(Colors::ORANGE, "Hold a grenade to record.");
                 return;
-            } else {
-                &data.local_player.weapon
-            };
+            }
 
+            ui.label("Name:");
+            ui.text_edit_singleline(&mut self.new_grenade.name);
+            ui.add_space(4.0);
+            ui.label("Description:");
+            ui.text_edit_multiline(&mut self.new_grenade.description);
+
+            ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.text_edit_singleline(&mut self.new_grenade.name);
-                ui.label("Name");
+                ui.checkbox(&mut self.new_grenade.modifiers.jump, "Jump");
+                ui.checkbox(&mut self.new_grenade.modifiers.duck, "Duck");
             });
 
-            ui.horizontal(|ui| {
-                ui.text_edit_multiline(&mut self.new_grenade.description);
-                ui.label("Instructions");
-            });
-
-            ui.checkbox(&mut self.new_grenade.modifiers.jump, "Jump");
-            ui.checkbox(&mut self.new_grenade.modifiers.duck, "Duck");
-            ui.checkbox(&mut self.new_grenade.modifiers.run, "Run");
-
-            if ui.button("Save").clicked() {
+            ui.add_space(10.0);
+            if ui.button(egui::RichText::new("Save Lineup").strong()).clicked() {
                 let mut grenades = self.grenades.lock();
-
-                let map = &data.map_name;
-                let grenade_list = match grenades.get_mut(map) {
-                    Some(list) => list,
-                    None => {
-                        grenades.insert(map.to_owned(), Vec::new());
-                        grenades.get_mut(map).unwrap()
-                    }
-                };
-
-                let mut new_grenade = Grenade::new();
-                std::mem::swap(&mut new_grenade, &mut self.new_grenade);
-
-                new_grenade.weapon = grenade.clone();
-                new_grenade.position = data.local_player.position;
-                new_grenade.view_angles = data.view_angles;
-
-                grenade_list.push(new_grenade);
+                let map_grenades = grenades.entry(data.map_name.clone()).or_default();
+                
+                let mut grenade = self.new_grenade.clone();
+                grenade.position = data.local_player.position;
+                grenade.view_angles = data.view_angles;
+                grenade.weapon = data.local_player.weapon.clone();
+                
+                map_grenades.push(grenade);
                 write_grenades(&grenades);
+                self.new_grenade = Grenade::new();
             }
         });
     }
 
     fn edit_grenade(&mut self, ui: &mut Ui) {
-        collapsing_open(ui, "Edit Grenade", |ui| {
-            let (map, index) = match &self.current_grenade {
-                Some(grenade) => grenade,
-                None => return,
-            };
+        let (map, index) = self.current_grenade.as_ref().unwrap();
+        let map = map.clone();
+        let index = *index;
 
+        section(ui, "Edit Lineup", None, |ui| {
             let mut grenades = self.grenades.lock();
-            let Some(grenades) = grenades.get_mut(map) else {
-                return;
-            };
-            let Some(grenade) = grenades.get_mut(*index) else {
-                return;
-            };
+            let grenade = &mut grenades.get_mut(&map).unwrap()[index];
 
+            ui.label("Name:");
+            ui.text_edit_singleline(&mut grenade.name);
+            ui.add_space(4.0);
+            ui.label("Description:");
+            ui.text_edit_multiline(&mut grenade.description);
+
+            ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.text_edit_singleline(&mut grenade.name);
-                ui.label("Name");
+                ui.checkbox(&mut grenade.modifiers.jump, "Jump");
+                ui.checkbox(&mut grenade.modifiers.duck, "Duck");
             });
 
+            ui.add_space(10.0);
             ui.horizontal(|ui| {
-                ui.text_edit_multiline(&mut grenade.description);
-                ui.label("Description");
+                if ui.button("Save Changes").clicked() {
+                    write_grenades(&grenades);
+                    self.current_grenade = None;
+                }
+                if ui.button("Cancel").clicked() {
+                    self.current_grenade = None;
+                }
             });
-
-            ui.checkbox(&mut grenade.modifiers.jump, "Jump");
-            ui.checkbox(&mut grenade.modifiers.duck, "Duck");
-            ui.checkbox(&mut grenade.modifiers.run, "Run");
         });
     }
 }

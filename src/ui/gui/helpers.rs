@@ -1,14 +1,35 @@
 use std::hash::Hash;
 
-use egui::{CollapsingHeader, Color32, DragValue, Event, Sense, Ui, Widget};
+use egui::{Color32, DragValue, Event, Sense, Ui, Widget};
 
 use crate::cs2::key_codes::KeyCode;
 
-pub fn collapsing_open(ui: &mut Ui, title: &str, add_body: impl FnOnce(&mut Ui)) {
-    CollapsingHeader::new(title)
-        .default_open(true)
-        .show(ui, add_body);
+
+pub fn section(ui: &mut Ui, title: &str, enabled: Option<&mut bool>, add_body: impl FnOnce(&mut Ui)) {
+    egui::Frame::NONE
+        .fill(Colors::BACKDROP)
+        .corner_radius(4.0)
+        .inner_margin(12.0)
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(title).strong().size(16.0));
+                    if let Some(val) = enabled {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.checkbox(val, "");
+                        });
+                    }
+                });
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(4.0);
+                add_body(ui);
+            });
+        });
+    ui.add_space(10.0);
 }
+
+use crate::ui::color::Colors;
 
 pub fn scroll(ui: &mut Ui, id: &str, add_content: impl FnOnce(&mut Ui)) {
     egui::ScrollArea::vertical()
