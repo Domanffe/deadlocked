@@ -53,20 +53,18 @@ impl Process {
             max: u64::MIN,
         };
 
-        let libs: Vec<u64> = cs2::LIBS
-            .iter()
-            .filter_map(|&lib| ret.module_base_address(lib))
-            .collect();
-        let sizes: Vec<u64> = libs.iter().map(|lib| ret.module_size(*lib)).collect();
-
-        for (lib, size) in libs.into_iter().zip(sizes) {
-            let min = lib - 1_000_000;
-            let max = lib + size + 1_000_000;
-            if min < ret.min {
-                ret.min = min;
-            }
-            if max > ret.max {
-                ret.max = max;
+        for &lib in cs2::LIBS.iter() {
+            if let Some((base, size)) = ret.module_range(lib) {
+                let min = base - 1_000_000;
+                let max = base + size + 1_000_000;
+                if min < ret.min {
+                    ret.min = min;
+                }
+                if max > ret.max {
+                    ret.max = max;
+                }
+            } else {
+                log::debug!("module {lib} not yet found in maps");
             }
         }
 
@@ -285,10 +283,14 @@ impl Process {
         buffer
     }
 
-    pub fn module_base_address(&self, module_name: &str) -> Option<u64> {
+    pub fn module_range(&self, module_name: &str) -> Option<(u64, u64)> {
         let Ok(maps) = File::open(format!("/proc/{}/maps", self.pid)) else {
             return None;
         };
+        let mut base = u64::MAX;
+        let mut end = u64::MIN;
+        let mut found = false;
+
         for line in BufReader::new(maps).lines() {
             let Ok(line) = line else {
                 continue;
@@ -296,25 +298,87 @@ impl Process {
             if !line.contains(module_name) {
                 continue;
             }
-            let Some((address, _)) = line.split_once('-') else {
+            let Some((range, _)) = line.split_once(' ') else {
                 continue;
             };
-            let Ok(address) = u64::from_str_radix(address, 16) else {
+            let Some((start, stop)) = range.split_once('-') else {
                 continue;
             };
-            log::debug!("found module {module_name} at {address:X}");
-            return Some(address);
+            let Ok(start) = u64::from_str_radix(start, 16) else {
+                continue;
+            };
+            let Ok(stop) = u64::from_str_radix(stop, 16) else {
+                continue;
+            };
+            if start < base {
+                base = start;
+            }
+            if stop > end {
+                end = stop;
+            }
+            found = true;
         }
-        log::warn!("module {module_name} not found");
-        None
+
+        if found {
+            log::debug!("found module {module_name} at {base:X}, size {:X}", end - base);
+            Some((base, end - base))
+        } else {
+            None
+        }
+    }
+
+    pub fn module_base_address(&self, module_name: &str) -> Option<u64> {
+        self.module_range(module_name).map(|(base, _)| base)
     }
 
     pub fn dump_module(&self, address: u64) -> Module {
-        let module_size = self.module_size(address);
+        let module_size = self.module_size_from_maps(address);
         Module {
             base: address,
             data: self.read_bytes(address, module_size),
         }
+    }
+
+    fn module_size_from_maps(&self, address: u64) -> u64 {
+        let Ok(maps) = File::open(format!("/proc/{}/maps", self.pid)) else {
+            return 0;
+        };
+        let mut end = address;
+        let mut last_name = String::new();
+
+        for line in BufReader::new(maps).lines() {
+            let Ok(line) = line else {
+                continue;
+            };
+            let Some((range, rest)) = line.split_once(' ') else {
+                continue;
+            };
+            let Some((start, stop)) = range.split_once('-') else {
+                continue;
+            };
+            let Ok(start) = u64::from_str_radix(start, 16) else {
+                continue;
+            };
+            let Ok(stop) = u64::from_str_radix(stop, 16) else {
+                continue;
+            };
+
+            if start == address {
+                last_name = rest.to_owned();
+                end = stop;
+            } else if start >= address && end == start {
+                if rest.contains('/') && rest == last_name {
+                    end = stop;
+                } else if rest.trim().is_empty() && last_name.trim().is_empty() {
+                    end = stop;
+                } else {
+                    break;
+                }
+            } else if start > address && end != start {
+                break;
+            }
+        }
+        end - address
     }
 
     pub fn get_relative_address(
@@ -432,16 +496,6 @@ impl Process {
         }
         log::warn!("did not find convar {convar_name}");
         None
-    }
-
-    pub fn module_size(&self, address: u64) -> u64 {
-        let section_header_offset = self.read::<u64>(address + elf::SECTION_HEADER_OFFSET);
-        let section_header_entry_size =
-            self.read::<u16>(address + elf::SECTION_HEADER_ENTRY_SIZE) as u64;
-        let section_header_num_entries =
-            self.read::<u16>(address + elf::SECTION_HEADER_NUM_ENTRIES) as u64;
-
-        section_header_offset + section_header_entry_size * section_header_num_entries
     }
 
     pub fn get_interface_function(&self, interface_address: u64, index: u64) -> u64 {

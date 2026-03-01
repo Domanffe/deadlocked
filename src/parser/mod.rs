@@ -501,20 +501,29 @@ enum Attribute {
 
 // todo: improve this
 fn game_dir() -> Result<PathBuf, String> {
-    let Ok(home) = std::env::var("HOME") else {
-        return Err("could not find home directory".to_owned());
-    };
-    let steam_path = PathBuf::from(&home).join(".steam/steam");
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+    let sudo_user = std::env::var("SUDO_USER").ok();
+
+    let mut steam_path = PathBuf::from(&home).join(".steam/steam");
+    if !steam_path.exists() {
+        if let Some(user) = sudo_user {
+            let user_home = PathBuf::from("/home").join(user);
+            steam_path = user_home.join(".steam/steam");
+        }
+    }
+
     if !steam_path.exists() {
         return Err(format!(
-            "could not locate steam directory ({home}/.steam/steam)"
+            "could not locate steam directory. checked: {}/.steam/steam",
+            home
         ));
     }
 
     let library_folders = steam_path.join("config/libraryfolders.vdf");
     let Ok(content) = std::fs::read_to_string(&library_folders) else {
         return Err(format!(
-            "could not read steam library folders ({home}/.steam/steam/config/libraryfolders.vdf)"
+            "could not read steam library folders ({})",
+            library_folders.display()
         ));
     };
     let libs: Vec<&str> = content

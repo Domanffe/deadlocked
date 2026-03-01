@@ -31,7 +31,12 @@ impl CS2 {
         offsets.interface.resource = resource_offset;
 
         // dwEntityList
-        let Some(entity_list) = client_module.scan("48 8B 0D ? ? ? ? 48 8D 95 ? ? ? ? 48 8B 01") else {
+        let entity_list = client_module
+            .scan("48 8B 0D ? ? ? ? 48 8D 95 ? ? ? ? 48 8B 01")
+            .or_else(|| client_module.scan("48 8B 0D ? ? ? ? 48 89 7C 24 ? 48 8B 01")) // Fallback
+            .or_else(|| client_module.scan("48 8B 0D ? ? ? ? 48 8B 01 48 8D 95 ? ? ? ?")); // Fallback
+
+        let Some(entity_list) = entity_list else {
             log::warn!("could not find entity list offset");
             return None;
         };
@@ -57,7 +62,11 @@ impl CS2 {
         offsets.interface.input = input_address;
 
         // dwLocalPlayerPawn
-        let Some(local_player) = client_module.scan("48 83 3D ? ? ? ? 00 0F 95 C0 C3") else {
+        let local_player = client_module
+            .scan("48 83 3D ? ? ? ? 00 0F 95 C0 C3")
+            .or_else(|| client_module.scan("48 8B 05 ? ? ? ? 48 85 C0 74 4F")); // Fallback
+
+        let Some(local_player) = local_player else {
             log::warn!("could not find local player offset");
             return None;
         };
@@ -70,8 +79,12 @@ impl CS2 {
         ) as u64;
 
         // dwViewMatrix
-        let Some(view_matrix) = client_module.scan("48 8D 05 ? ? ? ? 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ?") else {
-            log::warn!("could not find view matrix offset");
+        let view_matrix = client_module
+            .scan("48 8D 05 ? ? ? ? 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ?")
+            .or_else(|| client_module.scan("48 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? 48 8D 15")); // Fallback
+
+        let Some(view_matrix) = view_matrix else {
+            log::warn!("could find view matrix offset");
             return None;
         };
         offsets.direct.view_matrix = self.process.get_relative_address(view_matrix, 0x03, 0x07);
