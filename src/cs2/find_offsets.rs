@@ -19,8 +19,6 @@ impl CS2 {
         offsets.library.sdl = self.process.module_base_address(cs2::SDL_LIB)?;
         offsets.library.schema = self.process.module_base_address(cs2::SCHEMA_LIB)?;
 
-        let client_module = self.process.dump_module(cs2::CLIENT_LIB)?;
-
         let Some(resource_offset) = self
             .process
             .get_interface_offset(offsets.library.engine, "GameResourceServiceClientV0")
@@ -30,18 +28,8 @@ impl CS2 {
         };
         offsets.interface.resource = resource_offset;
 
-        // dwEntityList
-        let entity_list = client_module
-            .scan("48 8B 0D ? ? ? ? 48 8D 95 ? ? ? ? 48 8B 01")
-            .or_else(|| client_module.scan("48 8B 0D ? ? ? ? 48 89 7C 24 ? 48 8B 01")) // Fallback
-            .or_else(|| client_module.scan("48 8B 0D ? ? ? ? 48 8B 01 48 8D 95 ? ? ? ?")); // Fallback
-
-        let Some(entity_list) = entity_list else {
-            log::warn!("could not find entity list offset");
-            return None;
-        };
-        let entity_list_ptr = self.process.get_relative_address(entity_list, 0x03, 0x07);
-        offsets.interface.entity = self.process.read::<u64>(entity_list_ptr) + 0x10;
+        offsets.interface.entity =
+            self.process.read::<u64>(offsets.interface.resource + 0x50) + 0x10;
 
         let Some(cvar_address) = self
             .process
@@ -51,7 +39,6 @@ impl CS2 {
             return None;
         };
         offsets.interface.cvar = cvar_address;
-        
         let Some(input_address) = self
             .process
             .get_interface_offset(offsets.library.input, "InputSystemVersion0")
@@ -61,33 +48,31 @@ impl CS2 {
         };
         offsets.interface.input = input_address;
 
-        // dwLocalPlayerPawn
-        let local_player = client_module
-            .scan("48 83 3D ? ? ? ? 00 0F 95 C0 C3")
-            .or_else(|| client_module.scan("48 8B 05 ? ? ? ? 48 85 C0 74 4F")); // Fallback
-
-        let Some(local_player) = local_player else {
+        let Some(local_player) = self
+            .process
+            .scan("48 83 3D ? ? ? ? 00 0F 95 C0 C3", offsets.library.client)
+        else {
             log::warn!("could not find local player offset");
             return None;
         };
         offsets.direct.local_player = self.process.get_relative_address(local_player, 0x03, 0x08);
-        
         offsets.direct.button_state = self.process.read::<u32>(
             self.process
                 .get_interface_function(offsets.interface.input, 19)
                 + 0x14,
         ) as u64;
 
-        // dwViewMatrix
-        let view_matrix = client_module
-            .scan("48 8D 05 ? ? ? ? 4C 8D 05 ? ? ? ? 48 8D 0D ? ? ? ?")
-            .or_else(|| client_module.scan("48 8D 05 ? ? ? ? 48 8D 0D ? ? ? ? 48 8D 15")); // Fallback
-
-        let Some(view_matrix) = view_matrix else {
-            log::warn!("could find view matrix offset");
+        let Some(view_matrix) = self
+            .process
+            .scan("C6 83 ? ? 00 00 01 4C 8D 05", offsets.library.client)
+        else {
+            log::warn!("could not find view matrix offset");
             return None;
         };
-        offsets.direct.view_matrix = self.process.get_relative_address(view_matrix, 0x03, 0x07);
+
+        offsets.direct.view_matrix =
+            self.process
+                .get_relative_address(view_matrix + 0x0A, 0x0, 0x04);
 
         let Some(sdl_window) = self
             .process
@@ -100,14 +85,20 @@ impl CS2 {
         let sdl_window = self.process.read(sdl_window);
         offsets.direct.sdl_window = self.process.get_relative_address(sdl_window, 0x03, 0x07);
 
-        let Some(planted_c4) = client_module.scan("48 8D 35 ? ? ? ? 66 0F EF C0 C6 05 ? ? ? ? 01 48 8D 3D") else {
+        let Some(planted_c4) = self.process.scan(
+            "48 8D 35 ? ? ? ? 66 0F EF C0 C6 05 ? ? ? ? 01 48 8D 3D",
+            offsets.library.client,
+        ) else {
             log::warn!("could not find planted c4 offset");
             return None;
         };
         offsets.direct.planted_c4 = self.process.get_relative_address(planted_c4, 0x03, 0x0E);
 
         // xref "lobby_mapveto"
-        let Some(global_vars) = client_module.scan("48 8D 05 ? ? ? ? 48 8B 00 8B 50 ? E9") else {
+        let Some(global_vars) = self.process.scan(
+            "48 8D 05 ? ? ? ? 48 8B 00 8B 50 ? E9",
+            offsets.library.client,
+        ) else {
             log::warn!("could not find global vars offset");
             return None;
         };
@@ -130,7 +121,7 @@ impl CS2 {
         };
         offsets.convar.sensitivity = sensitivity_address;
 
-        let schema = Schema::new(&self.process, cs2::SCHEMA_LIB)?;
+        let schema = Schema::new(&self.process, offsets.library.schema)?;
         let client = schema.get_library(cs2::CLIENT_LIB)?;
 
         offsets.controller.steam_id = client.get("CBasePlayerController", "m_steamID")?;
@@ -151,11 +142,7 @@ impl CS2 {
         offsets.pawn.eye_angles = client.get("C_CSPlayerPawn", "m_angEyeAngles")?;
         offsets.pawn.velocity = client.get("C_BaseEntity", "m_vecAbsVelocity")?;
         offsets.pawn.flags = client.get("C_BaseEntity", "m_fFlags")?;
-        
-        // Use m_aimPunchCache if available, otherwise fallback to tick fraction + 8
-        offsets.pawn.aim_punch_cache = client.get("C_CSPlayerPawn", "m_aimPunchCache")
-            .or_else(|| client.get("C_CSPlayerPawn", "m_aimPunchTickFraction").map(|o| o + 8))?;
-            
+        offsets.pawn.aim_punch_cache = client.get("C_CSPlayerPawn", "m_aimPunchTickFraction")? + 8;
         offsets.pawn.shots_fired = client.get("C_CSPlayerPawn", "m_iShotsFired")?;
         offsets.pawn.view_angles = client.get("C_BasePlayerPawn", "v_angle")?;
         offsets.pawn.spotted_state = client.get("C_CSPlayerPawn", "m_entitySpottedState")?;

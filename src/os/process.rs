@@ -53,18 +53,20 @@ impl Process {
             max: u64::MIN,
         };
 
-        for &lib in cs2::LIBS.iter() {
-            if let Some((base, size)) = ret.module_range(lib) {
-                let min = base - 1_000_000;
-                let max = base + size + 1_000_000;
-                if min < ret.min {
-                    ret.min = min;
-                }
-                if max > ret.max {
-                    ret.max = max;
-                }
-            } else {
-                log::debug!("module {lib} not yet found in maps");
+        let libs: Vec<u64> = cs2::LIBS
+            .iter()
+            .filter_map(|&lib| ret.module_base_address(lib))
+            .collect();
+        let sizes: Vec<u64> = libs.iter().map(|lib| ret.module_size(*lib)).collect();
+
+        for (lib, size) in libs.into_iter().zip(sizes) {
+            let min = lib - 1_000_000;
+            let max = lib + size + 1_000_000;
+            if min < ret.min {
+                ret.min = min;
+            }
+            if max > ret.max {
+                ret.max = max;
             }
         }
 
@@ -283,14 +285,10 @@ impl Process {
         buffer
     }
 
-    pub fn module_range(&self, module_name: &str) -> Option<(u64, u64)> {
+    pub fn module_base_address(&self, module_name: &str) -> Option<u64> {
         let Ok(maps) = File::open(format!("/proc/{}/maps", self.pid)) else {
             return None;
         };
-        let mut base = u64::MAX;
-        let mut end = u64::MIN;
-        let mut found = false;
-
         for line in BufReader::new(maps).lines() {
             let Ok(line) = line else {
                 continue;
@@ -298,45 +296,66 @@ impl Process {
             if !line.contains(module_name) {
                 continue;
             }
-            let Some((range, _)) = line.split_once(' ') else {
+            let Some((address, _)) = line.split_once('-') else {
                 continue;
             };
-            let Some((start, stop)) = range.split_once('-') else {
+            let Ok(address) = u64::from_str_radix(address, 16) else {
                 continue;
             };
-            let Ok(start) = u64::from_str_radix(start, 16) else {
-                continue;
-            };
-            let Ok(stop) = u64::from_str_radix(stop, 16) else {
-                continue;
-            };
-            if start < base {
-                base = start;
-            }
-            if stop > end {
-                end = stop;
-            }
-            found = true;
+            log::debug!("found module {module_name} at {address:X}");
+            return Some(address);
         }
-
-        if found {
-            log::debug!("found module {module_name} at {base:X}, size {:X}", end - base);
-            Some((base, end - base))
-        } else {
-            None
-        }
+        log::warn!("module {module_name} not found");
+        None
     }
 
-    pub fn module_base_address(&self, module_name: &str) -> Option<u64> {
-        self.module_range(module_name).map(|(base, _)| base)
+    pub fn dump_module(&self, address: u64) -> Vec<u8> {
+        let module_size = self.module_size(address);
+        self.read_bytes(address, module_size)
     }
 
-    pub fn dump_module(&self, name: &str) -> Option<Module> {
-        let (base, size) = self.module_range(name)?;
-        Some(Module {
-            base,
-            data: self.read_bytes(base, size),
-        })
+    pub fn scan(&self, pattern: &str, base_address: u64) -> Option<u64> {
+        let mut bytes = Vec::with_capacity(8);
+        let mut mask = Vec::with_capacity(8);
+
+        for token in pattern.split_whitespace() {
+            if token == "?" || token == "??" {
+                bytes.push(0x00);
+                mask.push(0x00);
+            } else if token.len() == 2 {
+                match u8::from_str_radix(token, 16) {
+                    Ok(b) => {
+                        bytes.push(b);
+                        mask.push(0xFF);
+                    }
+                    Err(_) => {
+                        log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
+                    }
+                }
+            } else {
+                log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
+            }
+        }
+
+        let module = self.dump_module(base_address);
+        if module.len() < 500 {
+            return None;
+        }
+
+        let pattern_length = bytes.len();
+        let stop_index = module.len() - pattern_length;
+        'outer: for i in 0..stop_index {
+            for j in 0..pattern_length {
+                if mask[j] == 0xFF && module[i + j] != bytes[j] {
+                    continue 'outer;
+                }
+            }
+            let address = base_address + i as u64;
+            log::debug!("found pattern {pattern} at {address}");
+            return Some(address);
+        }
+        log::debug!("pattern {pattern} not found, might be outdated");
+        None
     }
 
     pub fn get_relative_address(
@@ -456,6 +475,16 @@ impl Process {
         None
     }
 
+    pub fn module_size(&self, address: u64) -> u64 {
+        let section_header_offset = self.read::<u64>(address + elf::SECTION_HEADER_OFFSET);
+        let section_header_entry_size =
+            self.read::<u16>(address + elf::SECTION_HEADER_ENTRY_SIZE) as u64;
+        let section_header_num_entries =
+            self.read::<u16>(address + elf::SECTION_HEADER_NUM_ENTRIES) as u64;
+
+        section_header_offset + section_header_entry_size * section_header_num_entries
+    }
+
     pub fn get_interface_function(&self, interface_address: u64, index: u64) -> u64 {
         self.read(self.read::<u64>(interface_address) + (index * 8))
     }
@@ -495,57 +524,5 @@ impl Process {
         } else {
             Some(process)
         }
-    }
-}
-
-pub struct Module {
-    pub base: u64,
-    pub data: Vec<u8>,
-}
-
-impl Module {
-    pub fn scan(&self, pattern: &str) -> Option<u64> {
-        let mut bytes = Vec::with_capacity(8);
-        let mut mask = Vec::with_capacity(8);
-
-        for token in pattern.split_whitespace() {
-            if token == "?" || token == "??" {
-                bytes.push(0x00);
-                mask.push(0x00);
-            } else if token.len() == 2 {
-                match u8::from_str_radix(token, 16) {
-                    Ok(b) => {
-                        bytes.push(b);
-                        mask.push(0xFF);
-                    }
-                    Err(_) => {
-                        log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
-                    }
-                }
-            } else {
-                log::warn!("unrecognized pattern token \"{token}\" in pattern {pattern}")
-            }
-        }
-
-        if self.data.len() < bytes.len() {
-            return None;
-        }
-
-        let pattern_length = bytes.len();
-        let stop_index = self.data.len() - pattern_length;
-
-        'outer: for i in 0..stop_index {
-            for j in 0..pattern_length {
-                if mask[j] == 0xFF && self.data[i + j] != bytes[j] {
-                    continue 'outer;
-                }
-            }
-            let address = self.base + i as u64;
-            log::debug!("found pattern {pattern} at {address:X}");
-            return Some(address);
-        }
-
-        log::debug!("pattern {pattern} not found");
-        None
     }
 }
