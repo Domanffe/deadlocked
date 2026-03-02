@@ -6,7 +6,7 @@ use crate::{
         BASE_PATH, CONFIG_PATH, Config, available_configs, delete_config, parse_config,
         write_config,
     },
-    ui::{app::App, color::Colors, gui::helpers::{scroll, section}},
+    ui::{app::App, color::Colors, grenades::read_grenades, gui::helpers::{scroll, section}},
 };
 
 impl App {
@@ -20,6 +20,13 @@ impl App {
                 cols[1].vertical(|ui| {
                     section(ui, "Saved Profiles", None, |ui| {
                         ui.horizontal(|ui| {
+                            if ui.button("Reload").on_hover_text("Reload all configs and grenades").clicked() {
+                                self.available_configs = available_configs();
+                                *self.grenades.lock() = read_grenades();
+                            }
+                            
+                            ui.add_space(8.0);
+                            
                             ui.text_edit_singleline(&mut self.new_config_name);
                             if ui.button("Create").clicked() && !self.new_config_name.is_empty() {
                                 if !self.new_config_name.ends_with(".toml") {

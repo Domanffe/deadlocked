@@ -1,7 +1,6 @@
 use std::{
     backtrace::Backtrace,
     collections::HashMap,
-    fmt::Display,
     panic::{self, PanicHookInfo},
     process::Command,
     sync::atomic::{AtomicBool, Ordering},
@@ -55,25 +54,6 @@ fn crash_handler(panic_info: &PanicHookInfo) {
 }
 
 const UNKNOWN: &str = "unknown";
-
-pub fn report_error(error: impl Display) {
-    let hwid = hwid();
-    let stacktrace = Backtrace::force_capture().to_string();
-
-    let json = serde_json::json!({
-        "hwid": hwid,
-        "stacktrace": stacktrace,
-        "error": error.to_string(),
-    });
-
-    let client_config = ureq::config::Config::builder()
-        .timeout_global(Some(TIMEOUT_DURATION))
-        .build();
-    let client = ureq::Agent::new_with_config(client_config);
-    let _ = client
-        .post("https://deadlocked.holyhades64.workers.dev/error")
-        .send_json(json);
-}
 
 pub fn info() {
     let hwid = hwid();

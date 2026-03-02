@@ -37,7 +37,14 @@ impl GameManager {
         data: Arc<Mutex<Data>>,
         grenades: Arc<Mutex<GrenadeList>>,
     ) -> Self {
-        let mouse = Mouse::open().unwrap();
+        let mouse = match Mouse::open() {
+            Ok(mouse) => mouse,
+            Err(err) => {
+                log::error!("error creating uinput device: {err}");
+                log::error!("uinput kernel module is not loaded, or user is not in input group.");
+                std::process::exit(1);
+            }
+        };
 
         let mut game = Self {
             tx,

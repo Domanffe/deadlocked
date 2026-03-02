@@ -99,26 +99,29 @@ pub struct Mouse {
 
 static CREATED: AtomicBool = AtomicBool::new(false);
 impl Mouse {
-    pub fn open() -> anyhow::Result<Self> {
+    pub fn open() -> Result<Self, String> {
         if CREATED.swap(true, Ordering::Relaxed) {
-            return Err(anyhow::anyhow!("mouse already initialized"));
+            return Err("mouse already initialized".into());
         }
-        let file = File::options().write(true).open("/dev/uinput")?;
+        let file = File::options()
+            .write(true)
+            .open("/dev/uinput")
+            .map_err(|e| e.to_string())?;
         let fd = file.as_raw_fd();
 
         unsafe {
             // enable event types
-            ui_set_evbit(fd, EV_SYN as u64)?;
-            ui_set_evbit(fd, EV_KEY as u64)?;
-            ui_set_evbit(fd, EV_REL as u64)?;
+            ui_set_evbit(fd, EV_SYN as u64).map_err(|e| e.to_string())?;
+            ui_set_evbit(fd, EV_KEY as u64).map_err(|e| e.to_string())?;
+            ui_set_evbit(fd, EV_REL as u64).map_err(|e| e.to_string())?;
 
-            ui_set_relbit(fd, AXIS_X as u64)?;
-            ui_set_relbit(fd, AXIS_Y as u64)?;
+            ui_set_relbit(fd, AXIS_X as u64).map_err(|e| e.to_string())?;
+            ui_set_relbit(fd, AXIS_Y as u64).map_err(|e| e.to_string())?;
 
-            ui_set_keybit(fd, BTN_LEFT as u64)?;
+            ui_set_keybit(fd, BTN_LEFT as u64).map_err(|e| e.to_string())?;
 
-            ui_dev_setup(fd, &DEVICE_SETUP)?;
-            ui_dev_create(fd)?;
+            ui_dev_setup(fd, &DEVICE_SETUP).map_err(|e| e.to_string())?;
+            ui_dev_create(fd).map_err(|e| e.to_string())?;
         }
 
         Ok(Self {
