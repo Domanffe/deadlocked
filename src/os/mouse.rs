@@ -188,8 +188,8 @@ impl Mouse {
 
             if smooth > 1.0 {
                 let jitter_factor = (smooth / 20.0).clamp(0.0, 1.0) * 0.3;
-                x += rng.random_range(-jitter_factor..jitter_factor);
-                y += rng.random_range(-jitter_factor..jitter_factor);
+                x += (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
+                y += (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
             }
 
             let ix = x as i32;
@@ -203,6 +203,7 @@ impl Mouse {
             return;
         }
 
+        // For larger movements, use a multi-step Bezier path within the same tick
         let steps = (smooth as usize / 2).clamp(2, 6);
         let mut last_pos = Vec2::ZERO;
         
@@ -210,15 +211,23 @@ impl Mouse {
         let p3 = total;
         
         let curve_intensity = (total.length() / 10.0).clamp(1.0, 5.0);
+        
+        // Safely generate control points using f32 scaling to avoid random_range panics
         let p1 = Vec2::new(
-            rng.random_range(0.0..total.x),
-            rng.random_range(0.0..total.y)
-        ) + Vec2::new(rng.random_range(-curve_intensity..curve_intensity), rng.random_range(-curve_intensity..curve_intensity));
+            total.x * rng.random::<f32>(),
+            total.y * rng.random::<f32>()
+        ) + Vec2::new(
+            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
+        );
         
         let p2 = Vec2::new(
-            rng.random_range(0.0..total.x),
-            rng.random_range(0.0..total.y)
-        ) + Vec2::new(rng.random_range(-curve_intensity..curve_intensity), rng.random_range(-curve_intensity..curve_intensity));
+            total.x * rng.random::<f32>(),
+            total.y * rng.random::<f32>()
+        ) + Vec2::new(
+            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
+        );
 
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
