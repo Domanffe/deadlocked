@@ -167,6 +167,20 @@ impl App {
             if checkbox(ui, "Flash Check", &mut self.weapon_config().aimbot.flash_check) {
                 self.send_config();
             }
+            
+            ui.add_space(4.0);
+            ui.separator();
+            ui.add_space(4.0);
+            
+            if checkbox_hover(ui, "Movement Prediction", "Compensate for target velocity (useful for moving targets)", &mut self.weapon_config().aimbot.prediction) {
+                self.send_config();
+            }
+            
+            if self.weapon_config().aimbot.prediction {
+                if drag(ui, "Strength", DragValue::new(&mut self.weapon_config().aimbot.prediction_factor).range(0.1..=5.0).speed(0.1)) {
+                    self.send_config();
+                }
+            }
         });
     }
 }

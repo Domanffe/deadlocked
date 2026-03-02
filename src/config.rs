@@ -84,6 +84,8 @@ pub struct AimbotConfig {
     pub smooth: f32,
     pub bones: Vec<Bones>,
     pub targeting_mode: TargetingMode,
+    pub prediction: bool,
+    pub prediction_factor: f32,
 }
 
 impl Default for AimbotConfig {
@@ -109,6 +111,8 @@ impl Default for AimbotConfig {
                 Bones::Hip,
             ],
             targeting_mode: TargetingMode::Fov,
+            prediction: false,
+            prediction_factor: 1.0,
         }
     }
 }

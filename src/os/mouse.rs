@@ -163,6 +163,16 @@ impl Mouse {
         self.file.write_all(&syn.bytes()).unwrap();
     }
 
+    fn cubic_bezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
+        let t2 = t * t;
+        let t3 = t2 * t;
+        let mt = 1.0 - t;
+        let mt2 = mt * mt;
+        let mt3 = mt2 * mt;
+
+        p0 * mt3 + p1 * (3.0 * mt2 * t) + p2 * (3.0 * mt * t2) + p3 * t3
+    }
+
     pub fn move_rel_humanized(&mut self, coords: &Vec2, smooth: f32) {
         use rand::RngExt;
 
@@ -170,26 +180,61 @@ impl Mouse {
 
         // sub-pixel precision
         let total = *coords + self.remainder;
-        let mut x = total.x;
-        let mut y = total.y;
+        
+        // If movement is very small, just do simple jitter/smoothing
+        if total.length() < 3.0 {
+            let mut x = total.x;
+            let mut y = total.y;
 
-        // add some jitter if smooth is high enough
-        if smooth > 1.0 {
-            let jitter_factor = (smooth / 20.0).clamp(0.0, 1.0) * 0.5;
-            x += rng.random_range(-jitter_factor..jitter_factor);
-            y += rng.random_range(-jitter_factor..jitter_factor);
-        }
+            if smooth > 1.0 {
+                let jitter_factor = (smooth / 20.0).clamp(0.0, 1.0) * 0.3;
+                x += rng.random_range(-jitter_factor..jitter_factor);
+                y += rng.random_range(-jitter_factor..jitter_factor);
+            }
 
-        let ix = x as i32;
-        let iy = y as i32;
+            let ix = x as i32;
+            let iy = y as i32;
 
-        self.remainder = Vec2::new(x - ix as f32, y - iy as f32);
+            self.remainder = Vec2::new(x - ix as f32, y - iy as f32);
 
-        if ix == 0 && iy == 0 {
+            if ix != 0 || iy != 0 {
+                self.move_rel(&Vec2::new(ix as f32, iy as f32));
+            }
             return;
         }
 
-        self.move_rel(&Vec2::new(ix as f32, iy as f32));
+        let steps = (smooth as usize / 2).clamp(2, 6);
+        let mut last_pos = Vec2::ZERO;
+        
+        let p0 = Vec2::ZERO;
+        let p3 = total;
+        
+        let curve_intensity = (total.length() / 10.0).clamp(1.0, 5.0);
+        let p1 = Vec2::new(
+            rng.random_range(0.0..total.x),
+            rng.random_range(0.0..total.y)
+        ) + Vec2::new(rng.random_range(-curve_intensity..curve_intensity), rng.random_range(-curve_intensity..curve_intensity));
+        
+        let p2 = Vec2::new(
+            rng.random_range(0.0..total.x),
+            rng.random_range(0.0..total.y)
+        ) + Vec2::new(rng.random_range(-curve_intensity..curve_intensity), rng.random_range(-curve_intensity..curve_intensity));
+
+        for i in 1..=steps {
+            let t = i as f32 / steps as f32;
+            let current_pos = Self::cubic_bezier(p0, p1, p2, p3, t);
+            let delta = current_pos - last_pos;
+            
+            let ix = delta.x as i32;
+            let iy = delta.y as i32;
+            
+            if ix != 0 || iy != 0 {
+                self.move_rel(&Vec2::new(ix as f32, iy as f32));
+            }
+            last_pos = Vec2::new(last_pos.x + ix as f32, last_pos.y + iy as f32);
+        }
+        
+        self.remainder = total - last_pos;
     }
 
     pub fn left_press(&mut self) {

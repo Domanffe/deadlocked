@@ -44,8 +44,6 @@ impl CS2 {
             return;
         }
 
-        let target = self.target.player.as_ref();
-
         let Some(local_player) = Player::local_player(self) else {
             return;
         };
@@ -54,7 +52,14 @@ impl CS2 {
             return;
         }
 
-        if !grenade && config.visibility_check && !target.unwrap().visible(self, &local_player) {
+        if let Some(target_player) = self.target.player.as_ref() {
+            if !grenade && config.visibility_check && !target_player.visible(self, &local_player) {
+                return;
+            }
+            if !grenade && !target_player.is_valid(self) {
+                return;
+            }
+        } else if !grenade {
             return;
         }
 
@@ -62,14 +67,40 @@ impl CS2 {
             let mut smallest_fov = 360.0;
             let mut smallest_angle = glam::Vec2::ZERO;
             if grenade {
-                let angle = self.target_grenade.as_ref().unwrap().view_angles;
-                let fov = angles_to_fov(&local_player.view_angles(self), &angle);
-                if fov < smallest_fov {
-                    smallest_angle = angle;
+                if let Some(target_grenade) = self.target_grenade.as_ref() {
+                    let angle = target_grenade.view_angles;
+                    let fov = angles_to_fov(&local_player.view_angles(self), &angle);
+                    if fov < smallest_fov {
+                        smallest_angle = angle;
+                    }
                 }
-            } else {
+            } else if let Some(target_player) = self.target.player.as_ref() {
+                let velocity = if config.prediction {
+                    target_player.velocity(self)
+                } else {
+                    glam::Vec3::ZERO
+                };
+
                 for bone in &config.bones {
-                    let bone_pos = target.unwrap().bone_position(self, bone.u64());
+                    let mut bone_pos = target_player.bone_position(self, bone.u64());
+                    
+                    if config.prediction {
+                        bone_pos += velocity * config.prediction_factor * 0.01;
+                    }
+
+                    if config.visibility_check {
+                        if let Some(bvh) = &self.bvh {
+                            if !bvh.has_line_of_sight(local_player.eye_position(self), bone_pos) {
+                                continue;
+                            }
+                        } else {
+                            let spotted_mask = target_player.spotted_mask(self);
+                            if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
+                                continue;
+                            }
+                        }
+                    }
+
                     let angle = self.angle_to_target(
                         &local_player,
                         &bone_pos,
@@ -85,6 +116,10 @@ impl CS2 {
             smallest_angle
         };
 
+        if target_angle == glam::Vec2::ZERO {
+            return;
+        }
+
         let view_angles = local_player.view_angles(self);
         if angles_to_fov(&view_angles, &target_angle)
             > (config.fov
@@ -94,10 +129,6 @@ impl CS2 {
                     1.0
                 })
         {
-            return;
-        }
-
-        if !grenade && !target.unwrap().is_valid(self) {
             return;
         }
 
