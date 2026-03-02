@@ -12,12 +12,12 @@ use crate::{
 impl App {
     pub fn config_settings(&mut self, ui: &mut Ui, ctx: &Context) {
         scroll(ui, "config_scroll", |ui| {
-            ui.columns(2, |cols| {
-                cols[0].vertical(|ui| {
+            ui.columns(2, |columns| {
+                columns[0].vertical(|ui| {
                     self.config_left(ui, ctx);
                 });
 
-                cols[1].vertical(|ui| {
+                columns[1].vertical(|ui| {
                     section(ui, "Saved Profiles", None, |ui| {
                         ui.horizontal(|ui| {
                             if ui.button("Reload").on_hover_text("Reload all configs and grenades").clicked() {
