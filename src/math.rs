@@ -52,6 +52,18 @@ pub fn vec2_clamp(vec: &mut Vec2) {
     vec.y = (vec.y + 180.0) % 360.0 - 180.0;
 }
 
+pub fn dist_to_line(point: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
+    let line = line_end - line_start;
+    let point_relative = point - line_start;
+    let length_sq = line.length_squared();
+    if length_sq < 0.0001 {
+        return point.distance(line_start);
+    }
+    let t = (point_relative.dot(line) / length_sq).clamp(0.0, 1.0);
+    let projection = line_start + line * t;
+    point.distance(projection)
+}
+
 pub fn world_to_screen(position: &Vec3, data: &crate::data::Data) -> Option<egui::Pos2> {
     let vm = &data.view_matrix;
     let mut screen_position = Vec2::new(

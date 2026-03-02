@@ -84,21 +84,30 @@ impl CS2 {
                 for bone in &config.bones {
                     let mut bone_pos = target_player.bone_position(self, bone.u64());
                     
-                    if config.prediction {
-                        bone_pos += velocity * config.prediction_factor * 0.01;
-                    }
-
                     if config.visibility_check {
+                        let eye_pos = local_player.eye_position(self);
+                        
+                        // Map geometry check
                         if let Some(bvh) = &self.bvh {
-                            if !bvh.has_line_of_sight(local_player.eye_position(self), bone_pos) {
-                                continue;
-                            }
-                        } else {
-                            let spotted_mask = target_player.spotted_mask(self);
-                            if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
+                            if !bvh.has_line_of_sight(eye_pos, bone_pos) {
                                 continue;
                             }
                         }
+
+                        // Volumetric smoke check
+                        if self.is_line_blocked_by_smoke(eye_pos, bone_pos) {
+                            continue;
+                        }
+
+                        // Game spotted mask (as extra fallback for other dynamic blockers)
+                        let spotted_mask = target_player.spotted_mask(self);
+                        if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
+                            continue;
+                        }
+                    }
+
+                    if config.prediction {
+                        bone_pos += velocity * config.prediction_factor * 0.01;
                     }
 
                     let angle = self.angle_to_target(

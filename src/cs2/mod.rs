@@ -370,6 +370,27 @@ impl CS2 {
         }
     }
 
+    pub fn is_line_blocked_by_smoke(&self, start: Vec3, end: Vec3) -> bool {
+        for entity in &self.entities {
+            if let Entity::Smoke(smoke) = entity {
+                // Check if smoke is actually popped
+                let disabled = self
+                    .process
+                    .read::<u8>(smoke.controller + self.offsets.smoke.did_smoke_effect)
+                    == 0;
+                if disabled {
+                    continue;
+                }
+
+                let smoke_pos = Player::entity(smoke.controller).position(self);
+                if crate::math::dist_to_line(smoke_pos, start, end) < 144.0 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     fn check_bvh(&mut self) {
         let current_map = self.current_map();
         if current_map != self.current_bvh {

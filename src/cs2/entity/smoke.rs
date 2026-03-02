@@ -6,7 +6,7 @@ use crate::cs2::{CS2, entity::player::Player};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Smoke {
-    controller: u64,
+    pub(crate) controller: u64,
 }
 
 impl Smoke {

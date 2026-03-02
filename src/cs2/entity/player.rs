@@ -392,27 +392,44 @@ impl Player {
     }
 
     pub fn visible(&self, cs2: &CS2, local_player: &Player) -> bool {
-        if let Some(bvh) = &cs2.bvh {
-            let eye_pos = local_player.eye_position(cs2);
-            const CHECKED_BONES: [Bones; 5] = [
-                Bones::Head,
-                Bones::LeftFoot,
-                Bones::RightFoot,
-                Bones::LeftHand,
-                Bones::RightHand,
-            ];
-            if !CHECKED_BONES
-                .iter()
-                .any(|bone| bvh.has_line_of_sight(eye_pos, self.bone_position(cs2, bone.u64())))
-            {
-                return false;
+        let eye_pos = local_player.eye_position(cs2);
+        const CHECKED_BONES: [Bones; 3] = [
+            Bones::Head,
+            Bones::Spine4,
+            Bones::Hip,
+        ];
+
+        let mut is_visible = false;
+        for bone in &CHECKED_BONES {
+            let bone_pos = self.bone_position(cs2, bone.u64());
+            
+            // Check map geometry
+            if let Some(bvh) = &cs2.bvh {
+                if !bvh.has_line_of_sight(eye_pos, bone_pos) {
+                    continue;
+                }
             }
-        } else {
-            let spotted_mask = self.spotted_mask(cs2);
-            if (spotted_mask & (1 << cs2.target.local_pawn_index)) == 0 {
-                return false;
+
+            // Check smoke
+            if cs2.is_line_blocked_by_smoke(eye_pos, bone_pos) {
+                continue;
             }
+
+            // If any critical bone is visible, player is visible
+            is_visible = true;
+            break;
         }
+
+        if !is_visible {
+            return false;
+        }
+
+        // Secondary check via spotted mask for additional legit verification
+        let spotted_mask = self.spotted_mask(cs2);
+        if (spotted_mask & (1 << cs2.target.local_pawn_index)) == 0 {
+            return false;
+        }
+
         true
     }
 
@@ -529,7 +546,7 @@ impl CS2 {
             }
 
             if player == local_player {
-                self.target.local_pawn_index = i - 1;
+                self.target.local_pawn_index = i;
             } else {
                 self.players.push(player);
             }
