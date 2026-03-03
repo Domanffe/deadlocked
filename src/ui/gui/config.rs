@@ -106,9 +106,15 @@ impl App {
             let is_active = *config == self.current_config;
 
             ui.horizontal(|ui| {
-                // Fixed width for the clickable name to prevent pushing the trash icon out
                 let name_width = ui.available_width() - 32.0;
-                if ui.add_sized([name_width, 20.0], egui::Button::new(name).selected(is_active).frame(false)).clicked() {
+                
+                let text = if is_active {
+                    egui::RichText::new(format!("● {}", name)).color(self.config.accent_color).strong()
+                } else {
+                    egui::RichText::new(format!("  {}", name)).color(Colors::TEXT)
+                };
+
+                if ui.add_sized([name_width, 24.0], egui::Button::new(text).frame(is_active).fill(Colors::HIGHLIGHT.gamma_multiply(0.3))).clicked() {
                     clicked_config = Some(config.clone());
                 }
                 
@@ -118,6 +124,7 @@ impl App {
                     }
                 });
             });
+            ui.add_space(2.0);
         }
 
         if let Some(config_path) = clicked_config {
