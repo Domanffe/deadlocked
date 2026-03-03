@@ -50,7 +50,7 @@ impl WindowContext {
             attributes
         } else {
             winit::window::WindowAttributes::default()
-                .with_inner_size(winit::dpi::LogicalSize::new(750, 450))
+                .with_inner_size(winit::dpi::LogicalSize::new(800, 500))
                 .with_title("deadlocked")
         };
 

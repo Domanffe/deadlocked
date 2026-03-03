@@ -19,15 +19,15 @@ impl App {
 
                 columns[1].vertical(|ui| {
                     section(ui, "Saved Profiles", None, |ui| {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             if ui.button("Reload").on_hover_text("Reload all configs and grenades").clicked() {
                                 self.available_configs = available_configs();
                                 *self.grenades.lock() = read_grenades();
                             }
                             
-                            ui.add_space(8.0);
+                            ui.add_space(4.0);
                             
-                            ui.text_edit_singleline(&mut self.new_config_name);
+                            ui.add(egui::TextEdit::singleline(&mut self.new_config_name).desired_width(120.0));
                             if ui.button("Create").clicked() && !self.new_config_name.is_empty() {
                                 if !self.new_config_name.ends_with(".toml") {
                                     self.new_config_name.push_str(".toml");
@@ -102,16 +102,18 @@ impl App {
         let mut delete = None;
 
         for config in &self.available_configs {
+            let name = config.file_name().unwrap().to_str().unwrap();
+            let is_active = *config == self.current_config;
+
             ui.horizontal(|ui| {
-                let name = config.file_name().unwrap().to_str().unwrap();
-                let is_active = *config == self.current_config;
-                
-                if ui.selectable_label(is_active, name).clicked() {
+                // Fixed width for the clickable name to prevent pushing the trash icon out
+                let name_width = ui.available_width() - 32.0;
+                if ui.add_sized([name_width, 20.0], egui::Button::new(name).selected(is_active).frame(false)).clicked() {
                     clicked_config = Some(config.clone());
                 }
                 
                 ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                    if ui.button("🗑").on_hover_text("Delete").clicked() {
+                    if ui.button("🗑").on_hover_text("Delete Profile").clicked() {
                         delete = Some(config.clone());
                     }
                 });
