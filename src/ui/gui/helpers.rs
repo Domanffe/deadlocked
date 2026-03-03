@@ -7,26 +7,32 @@ use crate::cs2::key_codes::KeyCode;
 
 pub fn section(ui: &mut Ui, title: &str, enabled: Option<&mut bool>, add_body: impl FnOnce(&mut Ui)) {
     egui::Frame::NONE
-        .fill(Colors::BACKDROP)
-        .corner_radius(4.0)
-        .inner_margin(12.0)
+        .fill(Colors::BASE)
+        .corner_radius(6.0)
+        .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
+        .inner_margin(16.0)
         .show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(title).strong().size(16.0));
+                    // Small accent dot/line for the title
+                    let (rect, _response) = ui.allocate_exact_size(egui::vec2(4.0, 16.0), egui::Sense::hover());
+                    ui.painter().rect_filled(rect, 2.0, Colors::ACCENT);
+
+                    ui.label(egui::RichText::new(title).strong().size(18.0).color(Colors::TEXT));
+                    
                     if let Some(val) = enabled {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.checkbox(val, "");
                         });
                     }
                 });
-                ui.add_space(4.0);
+                ui.add_space(8.0);
                 ui.separator();
-                ui.add_space(4.0);
+                ui.add_space(8.0);
                 add_body(ui);
             });
         });
-    ui.add_space(10.0);
+    ui.add_space(12.0);
 }
 
 use crate::ui::color::Colors;

@@ -46,6 +46,45 @@ impl App {
     fn gui(&mut self, ctx: &Context) {
         ctx.set_pixels_per_point(self.display_scale);
 
+        let mut style = (*ctx.style()).clone();
+        
+        // Modern spacing and sizing
+        style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        style.spacing.window_margin = egui::Margin::same(12);
+        style.spacing.button_padding = egui::vec2(8.0, 4.0);
+        
+        // Refined corner radiuses for egui 0.33
+        let radius = egui::CornerRadius::same(4);
+        style.visuals.widgets.noninteractive.corner_radius = radius;
+        style.visuals.widgets.inactive.corner_radius = radius;
+        style.visuals.widgets.hovered.corner_radius = radius;
+        style.visuals.widgets.active.corner_radius = radius;
+        style.visuals.widgets.open.corner_radius = radius;
+
+        style.visuals.window_corner_radius = egui::CornerRadius::same(8);
+        style.visuals.menu_corner_radius = egui::CornerRadius::same(6);
+
+        // Premium dark colors
+        style.visuals.widgets.noninteractive.bg_fill = Colors::BASE;
+        style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
+        style.visuals.widgets.inactive.bg_fill = Colors::BACKDROP;
+        style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
+        
+        style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT;
+        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, Colors::ACCENT);
+        
+        style.visuals.widgets.active.bg_fill = Colors::ACCENT;
+        style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
+
+        style.visuals.selection.bg_fill = Colors::ACCENT;
+        style.visuals.selection.stroke = egui::Stroke::new(1.0, Colors::WHITE);
+
+        // Subtler shadows
+        style.visuals.window_shadow.color = egui::Color32::from_black_alpha(150);
+
+        ctx.set_style(style);
+
+
         egui::SidePanel::left("sidebar")
             .resizable(false)
             .default_width(160.0)
@@ -108,14 +147,27 @@ impl App {
 
     fn sidebar_button(&mut self, ui: &mut egui::Ui, tab: Tab, icon: &str, label: &str) {
         let is_selected = self.current_tab == tab;
-        let color = if is_selected { Colors::WHITE } else { Colors::GRAY };
+        
+        let color = if is_selected { Colors::WHITE } else { Colors::SUBTEXT };
         let text = egui::RichText::new(format!("{}  {}", icon, label))
             .color(color)
-            .size(16.0);
+            .size(15.0)
+            .strong(); // make sidebar text a bit bolder
 
-        if ui.add(egui::Button::new(text).selected(is_selected).fill(egui::Color32::TRANSPARENT)).clicked() {
+        let fill = if is_selected {
+            Colors::HIGHLIGHT
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+
+        let button = egui::Button::new(text)
+            .fill(fill)
+            .min_size(egui::vec2(140.0, 32.0)); // Pill shape constraint
+
+        if ui.add(button).clicked() {
             self.current_tab = tab;
         }
+        ui.add_space(2.0); // Spacing between buttons
     }
 
     fn weapon_config(&mut self) -> &mut WeaponConfig {

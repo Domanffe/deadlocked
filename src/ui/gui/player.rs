@@ -35,9 +35,15 @@ impl App {
                     }
 
                     let right = &mut cols[1];
-                    let mut skeleton_color = self.config.player.skeleton_color;
-                    if color_picker(right, "Skeleton", &mut skeleton_color) {
-                        self.config.player.skeleton_color = skeleton_color;
+                    let mut skeleton_visible_color = self.config.player.skeleton_visible_color;
+                    if color_picker(right, "Skeleton (visible)", &mut skeleton_visible_color) {
+                        self.config.player.skeleton_visible_color = skeleton_visible_color;
+                        self.send_config();
+                    }
+
+                    let mut skeleton_invisible_color = self.config.player.skeleton_invisible_color;
+                    if color_picker(right, "Skeleton (invisible)", &mut skeleton_invisible_color) {
+                        self.config.player.skeleton_invisible_color = skeleton_invisible_color;
                         self.send_config();
                     }
                 });
@@ -86,6 +92,16 @@ impl App {
                 "draw_skeleton",
                 "Draw Bones",
                 &mut self.config.player.draw_skeleton,
+            ) {
+                self.send_config();
+            }
+
+            if drag(
+                ui,
+                "Thickness",
+                egui::DragValue::new(&mut self.config.player.skeleton_thickness)
+                    .range(0.1..=5.0)
+                    .speed(0.1),
             ) {
                 self.send_config();
             }

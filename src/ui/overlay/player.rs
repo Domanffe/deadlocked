@@ -253,54 +253,61 @@ impl App {
         let mut color = match &self.config.player.draw_skeleton {
             DrawMode::None => return,
             DrawMode::Health => {
-                self.health_color(player.health, self.config.player.skeleton_color.a())
+                self.health_color(player.health, self.config.player.skeleton_visible_color.a())
             }
-            DrawMode::Color => self.config.player.skeleton_color,
+            DrawMode::Color => {
+                if player.visible {
+                    self.config.player.skeleton_visible_color
+                } else {
+                    self.config.player.skeleton_invisible_color
+                }
+            }
         };
+
         if let Some(alpha) = alpha {
             color = Self::alpha(color, alpha);
         }
-        let stroke = Stroke::new(self.config.hud.line_width, color);
 
+        let stroke = Stroke::new(self.config.player.skeleton_thickness, color);
+
+        // Draw skeleton connections
         for (a, b) in &Bones::CONNECTIONS {
-            let Some(a) = player.bones.get(a) else {
+            let Some(a_pos) = player.bones.get(a) else {
                 continue;
             };
-            let Some(b) = player.bones.get(b) else {
-                continue;
-            };
-
-            let Some(a) = world_to_screen(a, data) else {
-                continue;
-            };
-            let Some(b) = world_to_screen(b, data) else {
+            let Some(b_pos) = player.bones.get(b) else {
                 continue;
             };
 
-            painter.line(vec![a, b], stroke);
+            let Some(a_scr) = world_to_screen(a_pos, data) else {
+                continue;
+            };
+            let Some(b_scr) = world_to_screen(b_pos, data) else {
+                continue;
+            };
+
+            painter.line(vec![a_scr, b_scr], stroke);
         }
 
-        // head circle
-        if !self.config.player.head_circle {
-            return;
+        // Draw head circle
+        if self.config.player.head_circle {
+            if let Some(head_pos) = player.bones.get(&Bones::Head) {
+                if let Some(neck_pos) = player.bones.get(&Bones::Neck) {
+                    let Some(head_scr) = world_to_screen(head_pos, data) else {
+                        return;
+                    };
+                    let Some(neck_scr) = world_to_screen(neck_pos, data) else {
+                        return;
+                    };
+
+                    // Radius is based on distance from head to neck for scale
+                    let radius = neck_scr.y - head_scr.y;
+                    if radius > 0.0 {
+                        painter.circle_stroke(head_scr, radius, stroke);
+                    }
+                }
+            }
         }
-        let Some(neck) = player.bones.get(&Bones::Neck) else {
-            return;
-        };
-        let Some(spine) = player.bones.get(&Bones::Spine3) else {
-            return;
-        };
-
-        let Some(neck) = world_to_screen(neck, data) else {
-            return;
-        };
-        let Some(spine) = world_to_screen(spine, data) else {
-            return;
-        };
-
-        let height = spine.y - neck.y;
-        let pos = pos2(neck.x - (spine.x - neck.x) / 2.0, neck.y - height / 2.0);
-        painter.circle_stroke(pos, height / 2.0, stroke);
     }
 
     pub fn update_player_sounds(&mut self) {
