@@ -53,6 +53,57 @@ impl App {
         );
     }
 
+    pub fn draw_bomb_damage(&self, painter: &Painter, data: &Data) {
+        if !self.config.hud.bomb_damage || !data.bomb.planted || !data.in_game {
+            return;
+        }
+
+        let bomb_pos = data.bomb.position;
+        let player_pos = data.local_player.position;
+        let distance = bomb_pos.distance(player_pos);
+        let max_damage = 500.0;
+        let radius = 1750.0;
+
+        if distance > radius {
+            return;
+        }
+
+        let mut damage = max_damage * (1.0 - (distance / radius));
+
+        if data.local_player.armor > 0 {
+            damage *= 0.5;
+        }
+
+        let damage = damage.round() as i32;
+        if damage <= 0 {
+            return;
+        }
+
+        let is_lethal = damage >= data.local_player.health;
+        let text = if is_lethal {
+            format!("LETHAL DAMAGE: -{}", damage)
+        } else {
+            format!("BOMB DAMAGE: -{}", damage)
+        };
+
+        let color = if is_lethal {
+            crate::ui::color::Colors::RED
+        } else {
+            crate::ui::color::Colors::YELLOW
+        };
+
+        let center_x = data.window_size.x / 2.0;
+        let pos = pos2(center_x, data.window_size.y * 0.75);
+
+        self.text(
+            painter,
+            text,
+            pos,
+            Align2::CENTER_CENTER,
+            Some(color),
+        );
+    }
+
     pub fn draw_fov_circle(&self, painter: &Painter, data: &Data) {
         if !self.config.hud.fov_circle || !data.in_game {
             return;

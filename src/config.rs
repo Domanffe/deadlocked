@@ -297,6 +297,7 @@ impl Default for SoundConfig {
 #[serde(default)]
 pub struct HudConfig {
     pub bomb_timer: bool,
+    pub bomb_damage: bool,
     pub fov_circle: bool,
     pub sniper_crosshair: bool,
     pub crosshair_color: Color32,
@@ -320,6 +321,7 @@ impl Default for HudConfig {
     fn default() -> Self {
         Self {
             bomb_timer: true,
+            bomb_damage: true,
             fov_circle: false,
             sniper_crosshair: true,
             crosshair_color: Color32::WHITE,
