@@ -173,10 +173,12 @@ impl Mouse {
         p0 * mt3 + p1 * (3.0 * mt2 * t) + p2 * (3.0 * mt * t2) + p3 * t3
     }
 
-    pub fn move_rel_humanized(&mut self, coords: &Vec2, smooth: f32) {
+    pub fn move_rel_humanized(&mut self, coords: &Vec2, smooth: f32, advanced: bool) {
         use rand::RngExt;
+        use rand_distr::{Distribution, Normal};
 
         let mut rng = rand::rng();
+        let normal = Normal::new(0.0, 0.15).unwrap(); // Gaussian tremor intensity
 
         // sub-pixel precision
         let total = *coords + self.remainder;
@@ -188,8 +190,16 @@ impl Mouse {
 
             if smooth > 1.0 {
                 let jitter_factor = (smooth / 20.0).clamp(0.0, 1.0) * 0.3;
-                x += (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
-                y += (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
+                let mut jitter_x = (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
+                let mut jitter_y = (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
+                
+                if advanced {
+                    jitter_x += normal.sample(&mut rng) as f32 * jitter_factor;
+                    jitter_y += normal.sample(&mut rng) as f32 * jitter_factor;
+                }
+                
+                x += jitter_x;
+                y += jitter_y;
             }
 
             let ix = x as i32;
@@ -213,7 +223,7 @@ impl Mouse {
         let curve_intensity = (total.length() / 10.0).clamp(1.0, 5.0);
         
         // Safely generate control points using f32 scaling to avoid random_range panics
-        let p1 = Vec2::new(
+        let mut p1 = Vec2::new(
             total.x * rng.random::<f32>(),
             total.y * rng.random::<f32>()
         ) + Vec2::new(
@@ -221,7 +231,7 @@ impl Mouse {
             (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
         );
         
-        let p2 = Vec2::new(
+        let mut p2 = Vec2::new(
             total.x * rng.random::<f32>(),
             total.y * rng.random::<f32>()
         ) + Vec2::new(
@@ -229,9 +239,21 @@ impl Mouse {
             (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
         );
 
+        if advanced {
+            // Apply Gaussian noise to control points for organic "wobble"
+            p1 += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * curve_intensity * 0.2;
+            p2 += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * curve_intensity * 0.2;
+        }
+
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
-            let current_pos = Self::cubic_bezier(p0, p1, p2, p3, t);
+            let mut current_pos = Self::cubic_bezier(p0, p1, p2, p3, t);
+            
+            if advanced {
+                // Micro-tremors on every step of the curve
+                current_pos += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * 0.1;
+            }
+
             let delta = current_pos - last_pos;
             
             let ix = delta.x as i32;

@@ -104,6 +104,28 @@ impl App {
         );
     }
 
+    pub fn draw_spectator_list(&self, painter: &Painter, data: &Data) {
+        if !self.config.hud.spectator_list || data.spectators.is_empty() {
+            return;
+        }
+
+        let mut text = String::from("Spectators:\n");
+        for name in &data.spectators {
+            text.push_str(&format!("  {}\n", name));
+        }
+
+        let padding = 10.0;
+        let pos = pos2(data.window_size.x - padding, padding);
+        
+        self.text(
+            painter,
+            text,
+            pos,
+            Align2::RIGHT_TOP,
+            Some(crate::ui::color::Colors::ACCENT),
+        );
+    }
+
     pub fn draw_fov_circle(&self, painter: &Painter, data: &Data) {
         if !self.config.hud.fov_circle || !data.in_game {
             return;

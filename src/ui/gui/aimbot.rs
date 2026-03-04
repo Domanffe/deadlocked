@@ -64,6 +64,14 @@ impl App {
             if drag(ui, "Smooth", DragValue::new(&mut self.weapon_config().aimbot.smooth).range(1.0..=20.0).speed(0.1)) {
                 self.send_config();
             }
+
+            if checkbox(ui, "Backtrack", &mut self.weapon_config().aimbot.backtrack) {
+                self.send_config();
+            }
+
+            if checkbox(ui, "Advanced Humanizer", &mut self.weapon_config().aimbot.advanced_humanizer) {
+                self.send_config();
+            }
         });
 
         if self.weapon_config().aimbot.enabled != enabled {

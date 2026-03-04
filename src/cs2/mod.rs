@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::collections::VecDeque;
 
 use glam::{IVec2, Mat4, Vec2, Vec3};
 use crate::utils::{log, sync::Mutex};
@@ -144,10 +145,23 @@ impl Game for CS2 {
             return;
         };
         let local_team = local_player.team(self);
+        let local_pawn = local_player.pawn;
+        
         if local_team != TEAM_T && local_team != TEAM_CT {
             data.weapon = Weapon::default();
             data.in_game = false;
             return;
+        }
+
+        data.spectators.clear();
+        for i in 0..=64 {
+            if let Some(player) = Player::index(self, i) {
+                if let Some(target) = player.spectator_target(self) {
+                    if target.pawn == local_pawn {
+                        data.spectators.push(player.name(self));
+                    }
+                }
+            }
         }
 
         use crate::os::process::BatchReader;
@@ -171,7 +185,7 @@ impl Game for CS2 {
                 continue;
             }
 
-            let player_data = PlayerData {
+            let mut player_data = PlayerData {
                 steam_id: batch.get(steam_id_idx),
                 health: batch.get(health_idx),
                 armor: batch.get(armor_idx),
@@ -187,7 +201,26 @@ impl Game for CS2 {
                 color: batch.get(color_idx),
                 rotation: batch.get(rotation_idx),
                 sound: player.is_making_sound(self),
+                backtrack: VecDeque::new(),
             };
+
+            // Backtrack logic: maintain last 15 ticks
+            let current_time = self.current_time();
+            let mut history = self.target.backtrack_history.borrow_mut();
+            let player_backtrack = history.entry(player_data.steam_id).or_insert_with(VecDeque::new);
+            
+            player_backtrack.push_back(crate::data::BacktrackRecord {
+                position: player_data.position,
+                head: player_data.head,
+                bones: player_data.bones.clone(),
+                timestamp: current_time,
+            });
+
+            if player_backtrack.len() > 15 {
+                player_backtrack.pop_front();
+            }
+            
+            player_data.backtrack = player_backtrack.clone();
 
             if !self.is_ffa() && batch.get::<u8>(team_idx) == local_team {
                 data.friendlies.push(player_data);
@@ -212,6 +245,7 @@ impl Game for CS2 {
             color: local_player.color(self),
             rotation: local_player.rotation(self),
             sound: None,
+            backtrack: VecDeque::new(),
         };
 
         data.entities = self

@@ -1,3 +1,5 @@
+use std::collections::{HashMap, VecDeque};
+use std::cell::RefCell;
 use glam::Vec2;
 use strum::IntoEnumIterator;
 
@@ -20,6 +22,7 @@ pub struct Target {
     pub bone_index: u64,
     pub local_pawn_index: u64,
     pub previous_aim_punch: Vec2,
+    pub backtrack_history: RefCell<HashMap<u64, VecDeque<crate::data::BacktrackRecord>>>,
 }
 
 impl Target {

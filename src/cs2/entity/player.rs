@@ -531,6 +531,7 @@ impl CS2 {
             return;
         };
 
+        let local_pawn = local_player.pawn;
         self.weapon = local_player.weapon(self);
 
         self.players.clear();

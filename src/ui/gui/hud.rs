@@ -46,6 +46,7 @@ impl App {
         section(ui, "General", None, |ui| {
             if checkbox(ui, "Bomb Timer", &mut self.config.hud.bomb_timer) { self.send_config(); }
             if checkbox(ui, "Bomb Damage", &mut self.config.hud.bomb_damage) { self.send_config(); }
+            if checkbox(ui, "Spectator List", &mut self.config.hud.spectator_list) { self.send_config(); }
             if checkbox(ui, "FOV Circle", &mut self.config.hud.fov_circle) { self.send_config(); }
             if checkbox(ui, "Sniper Crosshair", &mut self.config.hud.sniper_crosshair) { self.send_config(); }
         });

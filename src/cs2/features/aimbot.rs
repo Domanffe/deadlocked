@@ -90,7 +90,29 @@ impl CS2 {
                         // Map geometry check
                         if let Some(bvh) = &self.bvh {
                             if !bvh.has_line_of_sight(eye_pos, bone_pos) {
-                                continue;
+                                // If current bone is not visible, check backtrack records
+                                if config.backtrack {
+                                    let history_cell = self.target.backtrack_history.borrow();
+                                    if let Some(history) = history_cell.get(&target_player.steam_id(self)) {
+                                        let mut found_visible_backtrack = false;
+                                        for record in history.iter().rev() {
+                                            if let Some(back_pos) = record.bones.get(bone) {
+                                                if bvh.has_line_of_sight(eye_pos, *back_pos) {
+                                                    bone_pos = *back_pos;
+                                                    found_visible_backtrack = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if !found_visible_backtrack {
+                                            continue;
+                                        }
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    continue;
+                                }
                             }
                         }
 
@@ -164,6 +186,6 @@ impl CS2 {
             mouse_angles.x,
             mouse_angles.y
         );
-        mouse.move_rel_humanized(&mouse_angles, smooth);
+        mouse.move_rel_humanized(&mouse_angles, smooth, config.advanced_humanizer);
     }
 }

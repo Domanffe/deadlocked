@@ -86,6 +86,9 @@ pub struct AimbotConfig {
     pub targeting_mode: TargetingMode,
     pub prediction: bool,
     pub prediction_factor: f32,
+    pub backtrack: bool,
+    pub backtrack_ticks: u32,
+    pub advanced_humanizer: bool,
 }
 
 impl Default for AimbotConfig {
@@ -113,6 +116,9 @@ impl Default for AimbotConfig {
             targeting_mode: TargetingMode::Fov,
             prediction: false,
             prediction_factor: 1.0,
+            backtrack: false,
+            backtrack_ticks: 12,
+            advanced_humanizer: true,
         }
     }
 }
@@ -298,6 +304,7 @@ impl Default for SoundConfig {
 pub struct HudConfig {
     pub bomb_timer: bool,
     pub bomb_damage: bool,
+    pub spectator_list: bool,
     pub fov_circle: bool,
     pub sniper_crosshair: bool,
     pub crosshair_color: Color32,
@@ -322,6 +329,7 @@ impl Default for HudConfig {
         Self {
             bomb_timer: true,
             bomb_damage: true,
+            spectator_list: true,
             fov_circle: false,
             sniper_crosshair: true,
             crosshair_color: Color32::WHITE,
