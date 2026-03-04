@@ -184,10 +184,10 @@ impl App {
                 self.send_config();
             }
             
-            if self.weapon_config().aimbot.prediction {
-                if drag(ui, "Strength", DragValue::new(&mut self.weapon_config().aimbot.prediction_factor).range(0.1..=5.0).speed(0.1)) {
-                    self.send_config();
-                }
+            if self.weapon_config().aimbot.prediction
+                && drag(ui, "Strength", DragValue::new(&mut self.weapon_config().aimbot.prediction_factor).range(0.1..=5.0).speed(0.1))
+            {
+                self.send_config();
             }
         });
     }

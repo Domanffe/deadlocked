@@ -87,32 +87,30 @@ impl CS2 {
                     if config.visibility_check {
                         let eye_pos = local_player.eye_position(self);
                         
-                        // Map geometry check
-                        if let Some(bvh) = &self.bvh {
-                            if !bvh.has_line_of_sight(eye_pos, bone_pos) {
-                                // If current bone is not visible, check backtrack records
-                                if config.backtrack {
-                                    let history_cell = self.target.backtrack_history.borrow();
-                                    if let Some(history) = history_cell.get(&target_player.steam_id(self)) {
-                                        let mut found_visible_backtrack = false;
-                                        for record in history.iter().rev() {
-                                            if let Some(back_pos) = record.bones.get(bone) {
-                                                if bvh.has_line_of_sight(eye_pos, *back_pos) {
-                                                    bone_pos = *back_pos;
-                                                    found_visible_backtrack = true;
-                                                    break;
-                                                }
-                                            }
+                        if let Some(bvh) = &self.bvh
+                            && !bvh.has_line_of_sight(eye_pos, bone_pos)
+                        {
+                            if config.backtrack {
+                                let history_cell = self.target.backtrack_history.borrow();
+                                if let Some(history) = history_cell.get(&target_player.steam_id(self)) {
+                                    let mut found_visible_backtrack = false;
+                                    for record in history.iter().rev() {
+                                        if let Some(back_pos) = record.bones.get(bone)
+                                            && bvh.has_line_of_sight(eye_pos, *back_pos)
+                                        {
+                                            bone_pos = *back_pos;
+                                            found_visible_backtrack = true;
+                                            break;
                                         }
-                                        if !found_visible_backtrack {
-                                            continue;
-                                        }
-                                    } else {
+                                    }
+                                    if !found_visible_backtrack {
                                         continue;
                                     }
                                 } else {
                                     continue;
                                 }
+                            } else {
+                                continue;
                             }
                         }
 

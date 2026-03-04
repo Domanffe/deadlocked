@@ -502,11 +502,11 @@ fn game_dir() -> Result<PathBuf, String> {
     let sudo_user = std::env::var("SUDO_USER").ok();
 
     let mut steam_path = PathBuf::from(&home).join(".steam/steam");
-    if !steam_path.exists() {
-        if let Some(user) = sudo_user {
-            let user_home = PathBuf::from("/home").join(user);
-            steam_path = user_home.join(".steam/steam");
-        }
+    if !steam_path.exists()
+        && let Some(user) = sudo_user
+    {
+        let user_home = PathBuf::from("/home").join(user);
+        steam_path = user_home.join(".steam/steam");
     }
 
     if !steam_path.exists() {

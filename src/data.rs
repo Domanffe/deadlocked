@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 use glam::{Mat4, Vec2, Vec3};
 use serde::Serialize;
@@ -15,11 +15,14 @@ pub enum SoundType {
     Weapon,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct BacktrackRecord {
+    #[allow(dead_code)]
     pub position: Vec3,
+    #[allow(dead_code)]
     pub head: Vec3,
     pub bones: HashMap<Bones, Vec3>,
+    #[allow(dead_code)]
     pub timestamp: f32,
 }
 
@@ -62,7 +65,6 @@ pub struct PlayerData {
     pub color: i32,
     pub rotation: f32,
     pub sound: Option<SoundType>,
-    pub backtrack: VecDeque<BacktrackRecord>,
 }
 
 #[derive(Debug, Default, Serialize)]

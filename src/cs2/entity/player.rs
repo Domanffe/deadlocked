@@ -403,19 +403,16 @@ impl Player {
         for bone in &CHECKED_BONES {
             let bone_pos = self.bone_position(cs2, bone.u64());
             
-            // Check map geometry
-            if let Some(bvh) = &cs2.bvh {
-                if !bvh.has_line_of_sight(eye_pos, bone_pos) {
-                    continue;
-                }
+            if let Some(bvh) = &cs2.bvh
+                && !bvh.has_line_of_sight(eye_pos, bone_pos)
+            {
+                continue;
             }
 
-            // Check smoke
             if cs2.is_line_blocked_by_smoke(eye_pos, bone_pos) {
                 continue;
             }
 
-            // If any critical bone is visible, player is visible
             is_visible = true;
             break;
         }
@@ -424,7 +421,6 @@ impl Player {
             return false;
         }
 
-        // Secondary check via spotted mask for additional legit verification
         let spotted_mask = self.spotted_mask(cs2);
         if (spotted_mask & (1 << cs2.target.local_pawn_index)) == 0 {
             return false;
@@ -547,7 +543,7 @@ impl CS2 {
             }
 
             if player == local_player {
-                self.target.local_pawn_index = i;
+                self.target.local_pawn_index = i - 1;
             } else {
                 self.players.push(player);
             }

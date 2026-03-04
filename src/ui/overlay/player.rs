@@ -289,23 +289,19 @@ impl App {
             painter.line(vec![a_scr, b_scr], stroke);
         }
 
-        // Draw head circle
-        if self.config.player.head_circle {
-            if let Some(head_pos) = player.bones.get(&Bones::Head) {
-                if let Some(neck_pos) = player.bones.get(&Bones::Neck) {
-                    let Some(head_scr) = world_to_screen(head_pos, data) else {
-                        return;
-                    };
-                    let Some(neck_scr) = world_to_screen(neck_pos, data) else {
-                        return;
-                    };
-
-                    // Radius is based on distance from head to neck for scale
-                    let radius = neck_scr.y - head_scr.y;
-                    if radius > 0.0 {
-                        painter.circle_stroke(head_scr, radius, stroke);
-                    }
-                }
+        if self.config.player.head_circle
+            && let Some(head_pos) = player.bones.get(&Bones::Head)
+            && let Some(neck_pos) = player.bones.get(&Bones::Neck)
+        {
+            let Some(head_scr) = world_to_screen(head_pos, data) else {
+                return;
+            };
+            let Some(neck_scr) = world_to_screen(neck_pos, data) else {
+                return;
+            };
+            let radius = neck_scr.y - head_scr.y;
+            if radius > 0.0 {
+                painter.circle_stroke(head_scr, radius, stroke);
             }
         }
     }
