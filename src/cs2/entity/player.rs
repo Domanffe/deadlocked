@@ -393,40 +393,36 @@ impl Player {
 
     pub fn visible(&self, cs2: &CS2, local_player: &Player) -> bool {
         let eye_pos = local_player.eye_position(cs2);
-        const CHECKED_BONES: [Bones; 3] = [
+        const CHECKED_BONES: [Bones; 8] = [
             Bones::Head,
+            Bones::Neck,
             Bones::Spine4,
             Bones::Hip,
+            Bones::LeftHand,
+            Bones::RightHand,
+            Bones::LeftFoot,
+            Bones::RightFoot,
         ];
 
-        let mut is_visible = false;
-        for bone in &CHECKED_BONES {
-            let bone_pos = self.bone_position(cs2, bone.u64());
-            
-            if let Some(bvh) = &cs2.bvh
-                && !bvh.has_line_of_sight(eye_pos, bone_pos)
-            {
-                continue;
+        if let Some(bvh) = &cs2.bvh {
+            for bone in &CHECKED_BONES {
+                let bone_pos = self.bone_position(cs2, bone.u64());
+                
+                if !bvh.has_line_of_sight(eye_pos, bone_pos) {
+                    continue;
+                }
+
+                if cs2.is_line_blocked_by_smoke(eye_pos, bone_pos) {
+                    continue;
+                }
+
+                return true;
             }
-
-            if cs2.is_line_blocked_by_smoke(eye_pos, bone_pos) {
-                continue;
-            }
-
-            is_visible = true;
-            break;
+            false
+        } else {
+            let spotted_mask = self.spotted_mask(cs2);
+            (spotted_mask & (1 << cs2.target.local_pawn_index)) != 0
         }
-
-        if !is_visible {
-            return false;
-        }
-
-        let spotted_mask = self.spotted_mask(cs2);
-        if (spotted_mask & (1 << cs2.target.local_pawn_index)) == 0 {
-            return false;
-        }
-
-        true
     }
 
     pub fn crosshair_entity(&self, cs2: &CS2) -> Option<Self> {
