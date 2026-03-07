@@ -1,8 +1,8 @@
-use egui::{Align, Context};
 use crate::utils::log;
+use egui::{Align, Context};
 
 use crate::{
-    config::{WeaponConfig, write_config},
+    config::{Language, WeaponConfig, write_config},
     message::{Envelope, GameStatus, Message, Target},
     ui::{app::App, color::Colors, gui::aimbot::AimbotTab},
 };
@@ -10,11 +10,14 @@ use crate::{
 pub mod aimbot;
 mod config;
 mod grenade;
-mod helpers;
+pub mod helpers;
 mod hud;
 mod player;
 mod radar;
+pub mod translations;
 mod r#unsafe;
+
+use crate::ui::gui::translations::Trans;
 
 #[derive(PartialEq)]
 pub enum Tab {
@@ -28,6 +31,10 @@ pub enum Tab {
 }
 
 impl App {
+    pub fn t(&self, key: &str) -> &'static str {
+        Trans::get(self.config.language, key)
+    }
+
     pub fn send_config(&self) {
         self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
         self.save();
@@ -47,12 +54,12 @@ impl App {
         ctx.set_pixels_per_point(self.display_scale);
 
         let mut style = (*ctx.style()).clone();
-        
+
         // Modern spacing and sizing
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.window_margin = egui::Margin::same(12);
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
-        
+
         // Refined corner radiuses for egui 0.33
         let radius = egui::CornerRadius::same(4);
         style.visuals.widgets.noninteractive.corner_radius = radius;
@@ -69,21 +76,20 @@ impl App {
         style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
         style.visuals.widgets.inactive.bg_fill = Colors::BACKDROP;
         style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
-        
+
         style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT;
-        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, Colors::ACCENT);
-        
-        style.visuals.widgets.active.bg_fill = Colors::ACCENT;
+        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, self.config.accent_color);
+
+        style.visuals.widgets.active.bg_fill = self.config.accent_color;
         style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
 
-        style.visuals.selection.bg_fill = Colors::ACCENT;
+        style.visuals.selection.bg_fill = self.config.accent_color;
         style.visuals.selection.stroke = egui::Stroke::new(1.0, Colors::WHITE);
 
         // Subtler shadows
         style.visuals.window_shadow.color = egui::Color32::from_black_alpha(150);
 
         ctx.set_style(style);
-
 
         egui::SidePanel::left("sidebar")
             .resizable(false)
@@ -92,23 +98,31 @@ impl App {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(10.0);
-                    ui.heading(egui::RichText::new("DEADLOCKED").strong().color(Colors::ACCENT).size(20.0));
+                    ui.heading(
+                        egui::RichText::new("DEADLOCKED")
+                            .strong()
+                            .color(self.config.accent_color)
+                            .size(20.0),
+                    );
                     ui.add_space(20.0);
                 });
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
-                    self.sidebar_button(ui, Tab::Aimbot, "\u{f04fe}", "Aimbot");
-                    self.sidebar_button(ui, Tab::Player, "\u{f0013}", "Player");
-                    self.sidebar_button(ui, Tab::Hud, "\u{f0379}", "Hud");
-                    self.sidebar_button(ui, Tab::Radar, "\u{f0437}", "Radar");
-                    self.sidebar_button(ui, Tab::Grenades, "\u{f0691}", "Grenades");
-                    self.sidebar_button(ui, Tab::Unsafe, "\u{f0ce6}", "Unsafe");
-                    self.sidebar_button(ui, Tab::Config, "\u{f168b}", "Config");
+                    self.sidebar_button(ui, Tab::Aimbot, "\u{f04fe}", self.t("aimbot"));
+                    self.sidebar_button(ui, Tab::Player, "\u{f0013}", self.t("player_esp"));
+                    self.sidebar_button(ui, Tab::Hud, "\u{f0379}", self.t("hud"));
+                    self.sidebar_button(ui, Tab::Radar, "\u{f0437}", self.t("radar"));
+                    self.sidebar_button(ui, Tab::Grenades, "\u{f0691}", "Grenades"); // User said "except game-dynamic", but Grenades is a static tab
+                    self.sidebar_button(ui, Tab::Unsafe, "\u{f0ce6}", self.t("unsafe"));
+                    self.sidebar_button(ui, Tab::Config, "\u{f168b}", self.t("config"));
                 });
 
                 ui.with_layout(egui::Layout::bottom_up(Align::Center), |ui| {
                     ui.add_space(10.0);
-                    if ui.button(egui::RichText::new("Report Issue").small()).clicked() {
+                    if ui
+                        .button(egui::RichText::new("Report Issue").small())
+                        .clicked()
+                    {
                         let _ = std::process::Command::new("xdg-open")
                             .arg("https://github.com/Domanffe/deadlocked/issues")
                             .status();
@@ -116,13 +130,33 @@ impl App {
 
                     ui.add_space(10.0);
                     let (status_text, status_color) = match self.game_status {
-                        GameStatus::Working => ("System Live", Colors::GREEN),
-                        GameStatus::NotStarted => ("Waiting for CS2", Colors::YELLOW),
+                        GameStatus::Working => (
+                            if self.config.language == Language::Russian {
+                                "Система активна"
+                            } else {
+                                "System Live"
+                            },
+                            Colors::GREEN,
+                        ),
+                        GameStatus::NotStarted => (
+                            if self.config.language == Language::Russian {
+                                "Ожидание CS2"
+                            } else {
+                                "Waiting for CS2"
+                            },
+                            Colors::YELLOW,
+                        ),
                     };
 
                     ui.horizontal(|ui| {
-                        ui.add(egui::Label::new(egui::RichText::new("●").color(status_color)));
-                        ui.label(egui::RichText::new(status_text).small().color(Colors::SUBTEXT));
+                        ui.add(egui::Label::new(
+                            egui::RichText::new("●").color(status_color),
+                        ));
+                        ui.label(
+                            egui::RichText::new(status_text)
+                                .small()
+                                .color(Colors::SUBTEXT),
+                        );
                     });
                     ui.separator();
                 });
@@ -131,24 +165,26 @@ impl App {
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(Colors::BASE).inner_margin(20.0))
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
-                    match self.current_tab {
-                        Tab::Aimbot => self.aimbot_settings(ui),
-                        Tab::Player => self.player_settings(ui),
-                        Tab::Hud => self.hud_settings(ui),
-                        Tab::Radar => self.radar_settings(ui),
-                        Tab::Grenades => self.grenade_settings(ui),
-                        Tab::Unsafe => self.unsafe_settings(ui),
-                        Tab::Config => self.config_settings(ui, ctx),
-                    }
+                ui.vertical(|ui| match self.current_tab {
+                    Tab::Aimbot => self.aimbot_settings(ui),
+                    Tab::Player => self.player_settings(ui),
+                    Tab::Hud => self.hud_settings(ui),
+                    Tab::Radar => self.radar_settings(ui),
+                    Tab::Grenades => self.grenade_settings(ui),
+                    Tab::Unsafe => self.unsafe_settings(ui),
+                    Tab::Config => self.config_settings(ui, ctx),
                 });
             });
     }
 
     fn sidebar_button(&mut self, ui: &mut egui::Ui, tab: Tab, icon: &str, label: &str) {
         let is_selected = self.current_tab == tab;
-        
-        let color = if is_selected { Colors::WHITE } else { Colors::SUBTEXT };
+
+        let color = if is_selected {
+            Colors::WHITE
+        } else {
+            Colors::SUBTEXT
+        };
         let text = egui::RichText::new(format!("{}  {}", icon, label))
             .color(color)
             .size(15.0)

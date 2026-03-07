@@ -95,13 +95,7 @@ impl App {
         let center_x = data.window_size.x / 2.0;
         let pos = pos2(center_x, data.window_size.y * 0.75);
 
-        self.text(
-            painter,
-            text,
-            pos,
-            Align2::CENTER_CENTER,
-            Some(color),
-        );
+        self.text(painter, text, pos, Align2::CENTER_CENTER, Some(color));
     }
 
     pub fn draw_spectator_list(&self, painter: &Painter, data: &Data) {
@@ -116,7 +110,7 @@ impl App {
 
         let padding = 10.0;
         let pos = pos2(data.window_size.x - padding, padding);
-        
+
         self.text(
             painter,
             text,
@@ -124,6 +118,47 @@ impl App {
             Align2::RIGHT_TOP,
             Some(crate::ui::color::Colors::ACCENT),
         );
+    }
+
+    pub fn draw_keybind_list(&self, painter: &Painter, data: &Data) {
+        if !self.config.hud.keybind_list {
+            return;
+        }
+
+        let mut active_binds = Vec::new();
+
+        if data.esp_active {
+            active_binds.push(("ESP", "Enabled"));
+        }
+
+        if data.aimbot_active {
+            active_binds.push(("Aimbot", "Active"));
+        }
+
+        if data.triggerbot_active {
+            active_binds.push(("Triggerbot", "Active"));
+        }
+
+        if active_binds.is_empty() {
+            return;
+        }
+
+        let padding = 12.0;
+        let mut y_offset = data.window_size.y * 0.4;
+
+        for (name, status) in active_binds {
+            let text = format!("{}: {}", name, status);
+            let pos = pos2(data.window_size.x - padding, y_offset);
+
+            self.text(
+                painter,
+                text,
+                pos,
+                Align2::RIGHT_TOP,
+                Some(crate::ui::color::Colors::TEXT),
+            );
+            y_offset += self.config.hud.font_size + 4.0;
+        }
     }
 
     pub fn draw_fov_circle(&self, painter: &Painter, data: &Data) {

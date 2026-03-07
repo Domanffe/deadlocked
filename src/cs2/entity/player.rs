@@ -407,7 +407,7 @@ impl Player {
         if let Some(bvh) = &cs2.bvh {
             for bone in &CHECKED_BONES {
                 let bone_pos = self.bone_position(cs2, bone.u64());
-                
+
                 if !bvh.has_line_of_sight(eye_pos, bone_pos) {
                     continue;
                 }
@@ -448,7 +448,7 @@ impl Player {
         cs2.process.read(self.pawn + cs2.offsets.pawn.velocity)
     }
 
-    fn is_in_air(&self, cs2: &CS2) -> bool {
+    pub fn is_in_air(&self, cs2: &CS2) -> bool {
         let flags = cs2.process.read::<i32>(self.pawn + cs2.offsets.pawn.flags);
         // FL_ONGROUND = (1 << 0)
         (flags & 1) == 0

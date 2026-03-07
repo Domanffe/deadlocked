@@ -69,7 +69,10 @@ mod test {
     fn test_channel_timeout() {
         let (left, right) = Channel::new();
 
-        assert_eq!(left.receive_timeout(Duration::from_millis(100)), Err(RecvTimeoutError::Timeout));
+        assert_eq!(
+            left.receive_timeout(Duration::from_millis(100)),
+            Err(RecvTimeoutError::Timeout)
+        );
 
         assert_eq!(right.send(1), Ok(()));
         assert_eq!(left.receive_timeout(Duration::from_millis(100)), Ok(1));

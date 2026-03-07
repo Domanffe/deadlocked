@@ -1,7 +1,7 @@
 use std::{sync::Arc, thread::sleep, time::Instant};
 
-use crossbeam::channel::{Receiver, Sender};
 use crate::utils::{log, sync::Mutex};
+use crossbeam::channel::{Receiver, Sender};
 
 use crate::{
     config::{

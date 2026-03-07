@@ -4,8 +4,13 @@ use egui::{Color32, DragValue, Event, Sense, Ui, Widget};
 
 use crate::cs2::key_codes::KeyCode;
 
-
-pub fn section(ui: &mut Ui, title: &str, enabled: Option<&mut bool>, add_body: impl FnOnce(&mut Ui)) {
+pub fn section(
+    ui: &mut Ui,
+    title: &str,
+    enabled: Option<&mut bool>,
+    add_body: impl FnOnce(&mut Ui),
+) {
+    let accent_color = ui.visuals().selection.bg_fill; // Use global accent color
     egui::Frame::NONE
         .fill(Colors::BASE)
         .corner_radius(6.0)
@@ -14,12 +19,17 @@ pub fn section(ui: &mut Ui, title: &str, enabled: Option<&mut bool>, add_body: i
         .show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    // Small accent dot/line for the title
-                    let (rect, _response) = ui.allocate_exact_size(egui::vec2(4.0, 16.0), egui::Sense::hover());
-                    ui.painter().rect_filled(rect, 2.0, Colors::ACCENT);
+                    let (rect, _response) =
+                        ui.allocate_exact_size(egui::vec2(4.0, 16.0), egui::Sense::hover());
+                    ui.painter().rect_filled(rect, 2.0, accent_color);
 
-                    ui.label(egui::RichText::new(title).strong().size(18.0).color(Colors::TEXT));
-                    
+                    ui.label(
+                        egui::RichText::new(title)
+                            .strong()
+                            .size(18.0)
+                            .color(Colors::TEXT),
+                    );
+
                     if let Some(val) = enabled {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.checkbox(val, "");

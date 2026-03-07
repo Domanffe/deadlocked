@@ -1,5 +1,5 @@
-use glam::vec2;
 use crate::utils::log;
+use glam::vec2;
 
 use crate::{
     config::{Config, KeyMode},
@@ -43,6 +43,14 @@ impl CS2 {
         if self.target.player.is_none() && self.target_grenade.is_none() {
             return;
         }
+        // Hitchance logic
+        if config.hitchance < 100.0 {
+            use rand::RngExt;
+            let mut rng = rand::rng();
+            if rng.random_range(0.0..100.0) > config.hitchance {
+                return;
+            }
+        }
 
         let Some(local_player) = Player::local_player(self) else {
             return;
@@ -82,63 +90,81 @@ impl CS2 {
                 };
 
                 for bone in &config.bones {
-                    let mut bone_pos = target_player.bone_position(self, bone.u64());
-                    
-                    if config.visibility_check {
-                        let eye_pos = local_player.eye_position(self);
-                        
-                        if let Some(bvh) = &self.bvh
-                            && !bvh.has_line_of_sight(eye_pos, bone_pos)
-                        {
-                            if config.backtrack {
-                                let history_cell = self.target.backtrack_history.borrow();
-                                if let Some(history) = history_cell.get(&target_player.steam_id(self)) {
-                                    let mut found_visible_backtrack = false;
-                                    for record in history.iter().rev() {
-                                        if let Some(back_pos) = record.bones.get(bone)
-                                            && bvh.has_line_of_sight(eye_pos, *back_pos)
-                                        {
-                                            bone_pos = *back_pos;
-                                            found_visible_backtrack = true;
-                                            break;
+                    let center_pos = target_player.bone_position(self, bone.u64());
+                    let mut points_to_check = vec![center_pos];
+
+                    if config.multipoint {
+                        let scale = config.multipoint_scale * 3.0; // Scale by approximate hitbox size
+                        points_to_check.push(center_pos + glam::vec3(scale, 0.0, 0.0));
+                        points_to_check.push(center_pos + glam::vec3(-scale, 0.0, 0.0));
+                        points_to_check.push(center_pos + glam::vec3(0.0, scale, 0.0));
+                        points_to_check.push(center_pos + glam::vec3(0.0, -scale, 0.0));
+                    }
+
+                    for mut bone_pos in points_to_check {
+                        if config.visibility_check {
+                            let eye_pos = local_player.eye_position(self);
+
+                            if let Some(bvh) = &self.bvh
+                                && !bvh.has_line_of_sight(eye_pos, bone_pos)
+                            {
+                                if config.backtrack {
+                                    let history_cell = self.target.backtrack_history.borrow();
+                                    if let Some(history) =
+                                        history_cell.get(&target_player.steam_id(self))
+                                    {
+                                        let mut found_visible_backtrack = false;
+                                        for record in history.iter().rev() {
+                                            if let Some(back_pos) = record.bones.get(bone)
+                                                && bvh.has_line_of_sight(eye_pos, *back_pos)
+                                            {
+                                                bone_pos = *back_pos;
+                                                found_visible_backtrack = true;
+                                                break;
+                                            }
                                         }
-                                    }
-                                    if !found_visible_backtrack {
+                                        if !found_visible_backtrack {
+                                            continue;
+                                        }
+                                    } else {
                                         continue;
                                     }
                                 } else {
                                     continue;
                                 }
-                            } else {
+                            }
+
+                            // Volumetric smoke check
+                            if self.is_line_blocked_by_smoke(eye_pos, bone_pos) {
+                                continue;
+                            }
+
+                            // Game spotted mask (as extra fallback for other dynamic blockers)
+                            let spotted_mask = target_player.spotted_mask(self);
+                            if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
                                 continue;
                             }
                         }
 
-                        // Volumetric smoke check
-                        if self.is_line_blocked_by_smoke(eye_pos, bone_pos) {
-                            continue;
+                        if config.prediction {
+                            bone_pos += velocity * config.prediction_factor * 0.01;
                         }
 
-                        // Game spotted mask (as extra fallback for other dynamic blockers)
-                        let spotted_mask = target_player.spotted_mask(self);
-                        if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
-                            continue;
+                        let angle = self.angle_to_target(
+                            &local_player,
+                            &bone_pos,
+                            &self.target.previous_aim_punch,
+                        );
+                        let fov = angles_to_fov(&local_player.view_angles(self), &angle);
+                        if fov < smallest_fov {
+                            smallest_fov = fov;
+                            smallest_angle = angle;
                         }
-                    }
 
-                    if config.prediction {
-                        bone_pos += velocity * config.prediction_factor * 0.01;
-                    }
-
-                    let angle = self.angle_to_target(
-                        &local_player,
-                        &bone_pos,
-                        &self.target.previous_aim_punch,
-                    );
-                    let fov = angles_to_fov(&local_player.view_angles(self), &angle);
-                    if fov < smallest_fov {
-                        smallest_fov = fov;
-                        smallest_angle = angle;
+                        // If we found a visible point on this bone, no need to check other points of the same bone
+                        if config.multipoint {
+                            break;
+                        }
                     }
                 }
             }

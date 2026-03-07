@@ -1,6 +1,6 @@
-use std::collections::{HashMap, VecDeque};
-use std::cell::RefCell;
 use glam::Vec2;
+use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 use strum::IntoEnumIterator;
 
 use crate::{

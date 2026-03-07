@@ -24,8 +24,96 @@ impl App {
             None
         };
 
-        self.player_box(painter, player, data, sound_alpha);
-        self.skeleton(painter, player, data, sound_alpha);
+        let head_scr = world_to_screen(&player.head, data);
+        let foot_scr = world_to_screen(&player.position, data);
+
+        if head_scr.is_some() || foot_scr.is_some() {
+            self.player_box(painter, player, data, sound_alpha);
+            self.skeleton(painter, player, data, sound_alpha);
+            self.draw_snaplines(painter, player, data, sound_alpha);
+        } else if self.config.hud.fov_arrows {
+            let mut color = if player.visible {
+                self.config.player.box_visible_color
+            } else {
+                self.config.player.box_invisible_color
+            };
+
+            if let Some(alpha) = sound_alpha {
+                color = Self::alpha(color, alpha);
+            }
+
+            self.draw_fov_arrow(painter, player, data, color);
+        }
+    }
+
+    fn draw_snaplines(
+        &self,
+        painter: &Painter,
+        player: &PlayerData,
+        data: &Data,
+        alpha: Option<f32>,
+    ) {
+        use crate::config::SnaplineStart;
+
+        if !self.config.player.snaplines {
+            return;
+        }
+
+        let Some(target_scr) = world_to_screen(&player.position, data) else {
+            return;
+        };
+
+        let mut color = self.config.player.snapline_color;
+        if let Some(alpha) = alpha {
+            color = Self::alpha(color, alpha);
+        }
+
+        let start_pos = match self.config.player.snapline_start {
+            SnaplineStart::Top => pos2(data.window_size.x / 2.0, 0.0),
+            SnaplineStart::Center => pos2(data.window_size.x / 2.0, data.window_size.y / 2.0),
+            SnaplineStart::Bottom => pos2(data.window_size.x / 2.0, data.window_size.y),
+        };
+
+        painter.line_segment([start_pos, target_scr], Stroke::new(1.0, color));
+    }
+
+    fn draw_fov_arrow(&self, painter: &Painter, player: &PlayerData, data: &Data, color: Color32) {
+        use crate::math::rotate_point;
+        use glam::Vec2;
+
+        let center = Vec2::new(data.window_size.x / 2.0, data.window_size.y / 2.0);
+
+        let delta = player.position - data.local_player.position;
+        let target_yaw = delta.y.atan2(delta.x);
+        let local_yaw = data.view_angles.y.to_radians();
+
+        let rel_angle = target_yaw - local_yaw;
+
+        let radius = self.config.hud.arrow_radius;
+        let size = self.config.hud.arrow_size;
+
+        let arrow_pos = Vec2::new(
+            center.x - rel_angle.sin() * radius,
+            center.y - rel_angle.cos() * radius,
+        );
+
+        let p1 = Vec2::new(0.0, -size * 0.8);
+        let p2 = Vec2::new(-size * 0.5, size * 0.4);
+        let p3 = Vec2::new(size * 0.5, size * 0.4);
+
+        let rot_p1 = rotate_point(p1, Vec2::ZERO, -rel_angle) + arrow_pos;
+        let rot_p2 = rotate_point(p2, Vec2::ZERO, -rel_angle) + arrow_pos;
+        let rot_p3 = rotate_point(p3, Vec2::ZERO, -rel_angle) + arrow_pos;
+
+        painter.line(
+            vec![
+                pos2(rot_p1.x, rot_p1.y),
+                pos2(rot_p2.x, rot_p2.y),
+                pos2(rot_p3.x, rot_p3.y),
+                pos2(rot_p1.x, rot_p1.y),
+            ],
+            Stroke::new(2.0, color),
+        );
     }
 
     fn player_sound_alpha(
@@ -101,7 +189,7 @@ impl App {
 
         color = Self::alpha(color, alpha);
 
-        let stroke = Stroke::new(self.config.hud.line_width, color);
+        let stroke = Stroke::new(self.config.player.box_thickness, color);
         let icon_font = FontId::monospace(self.config.hud.icon_size);
 
         let midpoint = (player.position + player.head) / 2.0;
@@ -119,9 +207,7 @@ impl App {
         let half_height = bottom.y - top.y;
         let width = half_height / 2.0;
         let half_width = width / 2.0;
-        // quarter width
         let qw = half_width - 2.0;
-        // eigth width
         let ew = qw / 2.0;
 
         let tl = pos2(top.x - half_width, top.y);
@@ -160,20 +246,23 @@ impl App {
 
         // health bar
         if self.config.player.health_bar {
-            let x = bl.x - self.config.hud.line_width * 2.0;
+            let x = bl.x - self.config.player.box_thickness * 2.0;
             let delta = bl.y - tl.y;
             painter.line(
                 vec![
                     pos2(x, bl.y),
                     pos2(x, bl.y - (delta * player.health as f32 / 100.0)),
                 ],
-                Stroke::new(self.config.hud.line_width, Self::alpha(health_color, alpha)),
+                Stroke::new(
+                    self.config.player.box_thickness,
+                    Self::alpha(health_color, alpha),
+                ),
             );
         }
 
         if self.config.player.armor_bar && player.armor > 0 {
             let x = bl.x
-                - self.config.hud.line_width
+                - self.config.player.box_thickness
                     * if self.config.player.health_bar {
                         4.0
                     } else {
@@ -186,7 +275,7 @@ impl App {
                     pos2(x, bl.y - (delta * player.armor as f32 / 100.0)),
                 ],
                 Stroke::new(
-                    self.config.hud.line_width,
+                    self.config.player.box_thickness,
                     Self::alpha(Color32::BLUE, alpha),
                 ),
             );

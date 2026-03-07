@@ -1,5 +1,5 @@
-use glam::Vec2;
 use crate::utils::log;
+use glam::Vec2;
 
 use crate::{
     config::Config,

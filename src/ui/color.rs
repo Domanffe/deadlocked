@@ -6,11 +6,11 @@ pub struct Colors;
 
 impl Colors {
     pub const BACKDROP: Color32 = Color32::from_rgb(18, 18, 24); // Darker side panel
-    pub const BASE: Color32 = Color32::from_rgb(26, 26, 34);     // Main window background
+    pub const BASE: Color32 = Color32::from_rgb(26, 26, 34); // Main window background
     pub const HIGHLIGHT: Color32 = Color32::from_rgb(45, 45, 60); // Hover states
     pub const SUBTEXT: Color32 = Color32::from_rgb(160, 160, 170); // Slightly bluer grey
     pub const TEXT: Color32 = Color32::from_rgb(240, 240, 245);
-    
+
     pub const RED: Color32 = Color32::from_rgb(235, 87, 87); // Modern flat red
     pub const ORANGE: Color32 = Color32::from_rgb(242, 153, 74);
     pub const YELLOW: Color32 = Color32::from_rgb(242, 201, 76);

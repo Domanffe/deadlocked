@@ -64,6 +64,17 @@ pub fn dist_to_line(point: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
     point.distance(projection)
 }
 
+pub fn rotate_point(point: Vec2, center: Vec2, angle_rad: f32) -> Vec2 {
+    let sin = angle_rad.sin();
+    let cos = angle_rad.cos();
+
+    let p = point - center;
+    let x = p.x * cos - p.y * sin;
+    let y = p.x * sin + p.y * cos;
+
+    Vec2::new(x, y) + center
+}
+
 pub fn world_to_screen(position: &Vec3, data: &crate::data::Data) -> Option<egui::Pos2> {
     let vm = &data.view_matrix;
     let mut screen_position = Vec2::new(

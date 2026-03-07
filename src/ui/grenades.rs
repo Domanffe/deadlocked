@@ -1,8 +1,8 @@
 use std::{collections::HashMap, fs::read_to_string};
 
+use crate::utils::log;
 use glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
-use crate::utils::log;
 use uuid::Uuid;
 
 use crate::{config::BASE_PATH, constants::GRENADE_FILE_NAME, cs2::entity::weapon::Weapon};

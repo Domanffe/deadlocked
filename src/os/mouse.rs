@@ -7,9 +7,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::utils::log;
 use glam::Vec2;
 use nix::{ioctl_none, ioctl_write_int, ioctl_write_ptr, libc::c_ulong};
-use crate::utils::log;
 
 #[derive(Debug, Clone, Copy)]
 struct Timeval {
@@ -91,6 +91,7 @@ const SYN_REPORT: u16 = 0x00;
 const AXIS_X: u16 = 0x00;
 const AXIS_Y: u16 = 0x01;
 const BTN_LEFT: u16 = 0x110;
+const KEY_SPACE: u16 = 57;
 
 pub struct Mouse {
     file: File,
@@ -119,6 +120,7 @@ impl Mouse {
             ui_set_relbit(fd, AXIS_Y as u64).map_err(|e| e.to_string())?;
 
             ui_set_keybit(fd, BTN_LEFT as u64).map_err(|e| e.to_string())?;
+            ui_set_keybit(fd, KEY_SPACE as u64).map_err(|e| e.to_string())?;
 
             ui_dev_setup(fd, &DEVICE_SETUP).map_err(|e| e.to_string())?;
             ui_dev_create(fd).map_err(|e| e.to_string())?;
@@ -182,7 +184,7 @@ impl Mouse {
 
         // sub-pixel precision
         let total = *coords + self.remainder;
-        
+
         // If movement is very small, just do simple jitter/smoothing
         if total.length() < 3.0 {
             let mut x = total.x;
@@ -192,12 +194,12 @@ impl Mouse {
                 let jitter_factor = (smooth / 20.0).clamp(0.0, 1.0) * 0.3;
                 let mut jitter_x = (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
                 let mut jitter_y = (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
-                
+
                 if advanced {
                     jitter_x += normal.sample(&mut rng) as f32 * jitter_factor;
                     jitter_y += normal.sample(&mut rng) as f32 * jitter_factor;
                 }
-                
+
                 x += jitter_x;
                 y += jitter_y;
             }
@@ -216,67 +218,82 @@ impl Mouse {
         // For larger movements, use a multi-step Bezier path within the same tick
         let steps = (smooth as usize / 2).clamp(2, 6);
         let mut last_pos = Vec2::ZERO;
-        
+
         let p0 = Vec2::ZERO;
         let p3 = total;
-        
+
         let curve_intensity = (total.length() / 10.0).clamp(1.0, 5.0);
-        
+
         // Safely generate control points using f32 scaling to avoid random_range panics
-        let mut p1 = Vec2::new(
-            total.x * rng.random::<f32>(),
-            total.y * rng.random::<f32>()
-        ) + Vec2::new(
-            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
-            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
-        );
-        
-        let mut p2 = Vec2::new(
-            total.x * rng.random::<f32>(),
-            total.y * rng.random::<f32>()
-        ) + Vec2::new(
-            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
-            (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity
-        );
+        let mut p1 = Vec2::new(total.x * rng.random::<f32>(), total.y * rng.random::<f32>())
+            + Vec2::new(
+                (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+                (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+            );
+
+        let mut p2 = Vec2::new(total.x * rng.random::<f32>(), total.y * rng.random::<f32>())
+            + Vec2::new(
+                (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+                (rng.random::<f32>() * 2.0 - 1.0) * curve_intensity,
+            );
 
         if advanced {
             // Apply Gaussian noise to control points for organic "wobble"
-            p1 += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * curve_intensity * 0.2;
-            p2 += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * curve_intensity * 0.2;
+            p1 += Vec2::new(
+                normal.sample(&mut rng) as f32,
+                normal.sample(&mut rng) as f32,
+            ) * curve_intensity
+                * 0.2;
+            p2 += Vec2::new(
+                normal.sample(&mut rng) as f32,
+                normal.sample(&mut rng) as f32,
+            ) * curve_intensity
+                * 0.2;
         }
 
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
             let mut current_pos = Self::cubic_bezier(p0, p1, p2, p3, t);
-            
+
             if advanced {
                 // Micro-tremors on every step of the curve
-                current_pos += Vec2::new(normal.sample(&mut rng) as f32, normal.sample(&mut rng) as f32) * 0.1;
+                current_pos += Vec2::new(
+                    normal.sample(&mut rng) as f32,
+                    normal.sample(&mut rng) as f32,
+                ) * 0.1;
             }
 
             let delta = current_pos - last_pos;
-            
+
             let ix = delta.x as i32;
             let iy = delta.y as i32;
-            
+
             if ix != 0 || iy != 0 {
                 self.move_rel(&Vec2::new(ix as f32, iy as f32));
             }
             last_pos = Vec2::new(last_pos.x + ix as f32, last_pos.y + iy as f32);
         }
-        
+
         self.remainder = total - last_pos;
     }
 
     pub fn left_press(&mut self) {
-        self.key(1);
+        self.key(BTN_LEFT, 1);
     }
 
     pub fn left_release(&mut self) {
-        self.key(0);
+        self.key(BTN_LEFT, 0);
     }
 
-    fn key(&mut self, pressed: i32) {
+    pub fn space_press(&mut self) {
+        self.key(KEY_SPACE, 1);
+    }
+
+    pub fn space_release(&mut self) {
+        self.key(KEY_SPACE, 0);
+    }
+
+    fn key(&mut self, code: u16, pressed: i32) {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let time = Timeval {
             seconds: now.as_secs(),
@@ -286,7 +303,7 @@ impl Mouse {
         let press = InputEvent {
             time,
             event_type: EV_KEY,
-            code: BTN_LEFT,
+            code,
             value: pressed,
         };
 

@@ -6,9 +6,9 @@ use std::{
     process::Command,
 };
 
+use crate::utils::log;
 use bytemuck::AnyBitPattern;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use crate::utils::log;
 
 use crate::{
     os::crash::{self},

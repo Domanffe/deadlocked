@@ -7,10 +7,10 @@ use std::{
     time::Duration,
 };
 
+use crate::utils::log;
 use egui::Color32;
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
-use crate::utils::log;
 
 use crate::{
     cs2::{bones::Bones, entity::weapon::Weapon, key_codes::KeyCode},
@@ -23,9 +23,23 @@ pub const SLEEP_DURATION: Duration = Duration::from_secs(5);
 pub const DEFAULT_CONFIG_NAME: &str = "deadlocked.toml";
 pub const DEFAULT_URL: &str = "localhost:6346";
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumIter)]
+pub enum Language {
+    English,
+    Russian,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumIter)]
+pub enum SnaplineStart {
+    Top,
+    Center,
+    Bottom,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub language: Language,
     pub aim: AimConfig,
     pub player: PlayerConfig,
     pub hud: HudConfig,
@@ -37,12 +51,96 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            language: Language::English,
             aim: AimConfig::default(),
             player: PlayerConfig::default(),
             hud: HudConfig::default(),
             radar: RadarConfig::default(),
             misc: UnsafeConfig::default(),
             accent_color: Colors::BLUE,
+        }
+    }
+}
+
+impl Config {
+    pub fn load_preset(&mut self, tier: u32) {
+        match tier {
+            0 => {
+                // Legit
+                self.aim.global.aimbot.fov = 1.2;
+                self.aim.global.aimbot.smooth = 15.0;
+                self.aim.global.aimbot.hitchance = 60.0;
+                self.aim.global.aimbot.backtrack = false;
+                self.aim.global.aimbot.multipoint = false;
+                self.player.draw_skeleton = DrawMode::None;
+                self.player.draw_box = DrawMode::None;
+                self.player.box_thickness = 1.0;
+                self.player.snaplines = false;
+                self.hud.hitmarker = true;
+            }
+            1 => {
+                // Semi-Legit
+                self.aim.global.aimbot.fov = 2.0;
+                self.aim.global.aimbot.smooth = 10.0;
+                self.aim.global.aimbot.hitchance = 85.0;
+                self.aim.global.aimbot.backtrack = true;
+                self.aim.global.aimbot.backtrack_ticks = 6;
+                self.aim.global.aimbot.multipoint = false;
+                self.player.draw_skeleton = DrawMode::Color;
+                self.player.draw_box = DrawMode::None;
+                self.player.box_thickness = 1.0;
+                self.player.snaplines = false;
+            }
+            2 => {
+                // Recommended
+                self.aim.global.aimbot.fov = 3.0;
+                self.aim.global.aimbot.smooth = 6.0;
+                self.aim.global.aimbot.hitchance = 100.0;
+                self.aim.global.aimbot.backtrack = true;
+                self.aim.global.aimbot.backtrack_ticks = 12;
+                self.aim.global.aimbot.multipoint = true;
+                self.aim.global.aimbot.multipoint_scale = 0.4;
+                self.player.draw_skeleton = DrawMode::Color;
+                self.player.draw_box = DrawMode::Color;
+                self.player.box_thickness = 1.0;
+                self.player.box_mode = BoxMode::Gap;
+                self.player.snaplines = false;
+            }
+            3 => {
+                // Blatant
+                self.aim.global.aimbot.fov = 6.0;
+                self.aim.global.aimbot.smooth = 3.0;
+                self.aim.global.aimbot.hitchance = 100.0;
+                self.aim.global.aimbot.backtrack = true;
+                self.aim.global.aimbot.backtrack_ticks = 15;
+                self.aim.global.aimbot.multipoint = true;
+                self.aim.global.aimbot.multipoint_scale = 0.7;
+                self.player.draw_box = DrawMode::Color;
+                self.player.box_mode = BoxMode::Full;
+                self.player.box_thickness = 1.5;
+                self.player.snaplines = true;
+                self.player.snapline_start = SnaplineStart::Bottom;
+            }
+            4 => {
+                // Rage
+                self.aim.global.aimbot.fov = 45.0;
+                self.aim.global.aimbot.smooth = 1.0;
+                self.aim.global.aimbot.hitchance = 100.0;
+                self.aim.global.aimbot.backtrack = true;
+                self.aim.global.aimbot.backtrack_ticks = 15;
+                self.aim.global.aimbot.visibility_check = false;
+                self.aim.global.aimbot.multipoint = true;
+                self.aim.global.aimbot.multipoint_scale = 1.0;
+                self.aim.global.triggerbot.enabled = true;
+                self.aim.global.triggerbot.delay = 0..=0;
+                self.player.draw_box = DrawMode::Color;
+                self.player.box_mode = BoxMode::Full;
+                self.player.box_thickness = 2.0;
+                self.player.snaplines = true;
+                self.player.snapline_start = SnaplineStart::Center;
+                self.misc.bunnyhop = true;
+            }
+            _ => {}
         }
     }
 }
@@ -89,6 +187,9 @@ pub struct AimbotConfig {
     pub backtrack: bool,
     pub backtrack_ticks: u32,
     pub advanced_humanizer: bool,
+    pub hitchance: f32,
+    pub multipoint: bool,
+    pub multipoint_scale: f32,
 }
 
 impl Default for AimbotConfig {
@@ -119,6 +220,9 @@ impl Default for AimbotConfig {
             backtrack: false,
             backtrack_ticks: 12,
             advanced_humanizer: true,
+            hitchance: 100.0,
+            multipoint: false,
+            multipoint_scale: 0.5,
         }
     }
 }
@@ -231,6 +335,7 @@ pub struct PlayerConfig {
     pub show_friendlies: bool,
     pub draw_box: DrawMode,
     pub box_mode: BoxMode,
+    pub box_thickness: f32,
     pub box_visible_color: Color32,
     pub box_invisible_color: Color32,
     pub draw_skeleton: DrawMode,
@@ -242,6 +347,9 @@ pub struct PlayerConfig {
     pub armor_bar: bool,
     pub player_name: bool,
     pub weapon_icon: bool,
+    pub snaplines: bool,
+    pub snapline_color: Color32,
+    pub snapline_start: SnaplineStart,
     pub tags: bool,
     pub visible_only: bool,
     pub sound: SoundConfig,
@@ -255,6 +363,7 @@ impl Default for PlayerConfig {
             show_friendlies: false,
             draw_box: DrawMode::Color,
             box_mode: BoxMode::Gap,
+            box_thickness: 1.0,
             box_visible_color: Color32::WHITE,
             box_invisible_color: Color32::RED,
             draw_skeleton: DrawMode::Color,
@@ -266,6 +375,9 @@ impl Default for PlayerConfig {
             armor_bar: true,
             player_name: true,
             weapon_icon: true,
+            snaplines: false,
+            snapline_color: Color32::WHITE,
+            snapline_start: SnaplineStart::Bottom,
             tags: true,
             visible_only: false,
             sound: SoundConfig::default(),
@@ -306,6 +418,14 @@ pub struct HudConfig {
     pub bomb_damage: bool,
     pub spectator_list: bool,
     pub fov_circle: bool,
+    pub fov_arrows: bool,
+    pub arrow_size: f32,
+    pub arrow_radius: f32,
+    pub keybind_list: bool,
+    pub hitmarker: bool,
+    pub hitmarker_color: Color32,
+    pub bullet_tracers: bool,
+    pub tracer_color: Color32,
     pub sniper_crosshair: bool,
     pub crosshair_color: Color32,
     pub dropped_weapons: bool,
@@ -331,6 +451,14 @@ impl Default for HudConfig {
             bomb_damage: true,
             spectator_list: true,
             fov_circle: false,
+            fov_arrows: true,
+            arrow_size: 15.0,
+            arrow_radius: 150.0,
+            keybind_list: true,
+            hitmarker: false,
+            hitmarker_color: Color32::WHITE,
+            bullet_tracers: false,
+            tracer_color: Color32::from_rgba_unmultiplied(255, 255, 255, 100),
             sniper_crosshair: true,
             crosshair_color: Color32::WHITE,
             dropped_weapons: true,
@@ -377,6 +505,8 @@ pub struct UnsafeConfig {
     pub no_smoke: bool,
     pub change_smoke_color: bool,
     pub smoke_color: Color32,
+    pub auto_accept: bool,
+    pub bunnyhop: bool,
 }
 
 impl Default for UnsafeConfig {
@@ -389,6 +519,8 @@ impl Default for UnsafeConfig {
             no_smoke: false,
             change_smoke_color: false,
             smoke_color: Color32::RED,
+            auto_accept: false,
+            bunnyhop: false,
         }
     }
 }

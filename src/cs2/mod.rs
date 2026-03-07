@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use glam::{IVec2, Mat4, Vec2, Vec3};
 use crate::utils::{log, sync::Mutex};
+use glam::{IVec2, Mat4, Vec2, Vec3};
 
 use crate::{
     config::{AimbotConfig, Config, KeyMode, RcsConfig, TriggerbotConfig},
@@ -116,6 +116,8 @@ impl Game for CS2 {
 
         self.triggerbot_shoot(mouse);
 
+        self.bunnyhop(config, mouse);
+
         self.find_target(config);
 
         self.aimbot(config, mouse);
@@ -145,7 +147,7 @@ impl Game for CS2 {
         };
         let local_team = local_player.team(self);
         let local_pawn = local_player.pawn;
-        
+
         if local_team != TEAM_T && local_team != TEAM_CT {
             data.weapon = Weapon::default();
             data.in_game = false;
@@ -205,7 +207,7 @@ impl Game for CS2 {
             let current_time = self.current_time();
             let mut history = self.target.backtrack_history.borrow_mut();
             let player_backtrack = history.entry(player_data.steam_id).or_default();
-            
+
             player_backtrack.push_back(crate::data::BacktrackRecord {
                 position: player_data.position,
                 head: player_data.head,
@@ -226,7 +228,9 @@ impl Game for CS2 {
 
         {
             let mut history = self.target.backtrack_history.borrow_mut();
-            let active_ids: Vec<u64> = data.players.iter()
+            let active_ids: Vec<u64> = data
+                .players
+                .iter()
                 .chain(data.friendlies.iter())
                 .map(|p| p.steam_id)
                 .collect();
@@ -436,6 +440,29 @@ impl CS2 {
                 log::info!("loaded bvh for {current_map}");
                 self.current_bvh = current_map;
             }
+        }
+    }
+
+    fn bunnyhop(&self, config: &Config, mouse: &mut Mouse) {
+        if !config.misc.bunnyhop {
+            return;
+        }
+
+        let Some(local_player) = Player::local_player(self) else {
+            return;
+        };
+
+        if !self
+            .input
+            .is_key_pressed(crate::cs2::key_codes::KeyCode::Space)
+        {
+            return;
+        }
+
+        if !local_player.is_in_air(self) {
+            mouse.space_press();
+        } else {
+            mouse.space_release();
         }
     }
 }
