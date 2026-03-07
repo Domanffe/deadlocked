@@ -56,6 +56,7 @@ pub struct App {
     pub available_configs: Vec<PathBuf>,
     pub new_config_name: String,
 
+    pub active_preset: Option<u32>,
     pub current_tab: Tab,
     pub aimbot_tab: AimbotTab,
     pub aimbot_weapon: Weapon,
@@ -73,7 +74,7 @@ impl App {
         // override config if invalid
         write_config(&config, &CONFIG_PATH.join(DEFAULT_CONFIG_NAME));
 
-        let ret = Self {
+        let mut ret = Self {
             gui: None,
             overlay: None,
 
@@ -98,6 +99,7 @@ impl App {
             new_grenade: Grenade::new(),
             current_grenade: None,
 
+            active_preset: None,
             current_tab: Tab::Aimbot,
             aimbot_tab: AimbotTab::Global,
             aimbot_weapon: Weapon::Ak47,

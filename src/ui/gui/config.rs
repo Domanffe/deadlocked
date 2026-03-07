@@ -6,6 +6,7 @@ use crate::{
         BASE_PATH, CONFIG_PATH, Config, Language, available_configs, delete_config, parse_config,
         write_config,
     },
+    message::{Message, Target},
     ui::{
         app::App,
         color::Colors,
@@ -66,34 +67,38 @@ impl App {
 
     fn config_left(&mut self, ui: &mut Ui, ctx: &Context) {
         section(ui, self.t("active_profile"), None, |ui| {
-            let current_name = self
-                .current_config
+            let current_name = self.current_config
                 .file_name()
                 .and_then(|n| n.to_str())
-                .unwrap_or("Unknown");
-            ui.label(format!(
-                "{}: {}",
-                if self.config.language == Language::Russian {
-                    "Текущий"
-                } else {
-                    "Current"
-                },
-                current_name
-            ));
+                .unwrap_or("Temporary")
+                .to_string(); // Clone to avoid borrow issues
+            
+            ui.horizontal(|ui| {
+                ui.label(format!("{}:", if self.config.language == Language::Russian { "Файл" } else { "File" }));
+                ui.label(egui::RichText::new(&current_name).color(self.config.accent_color).strong());
+            });
             ui.add_space(4.0);
-
-            ui.columns(2, |cols| {
-                if cols[0].button(self.t("reset")).clicked() {
-                    self.config = Config::default();
-                    self.send_config();
-                    log::info!("loaded default config");
+            
+            ui.vertical_centered_justified(|ui| {
+                if ui.button(egui::RichText::new(self.t("save")).strong()).on_hover_text("Save current settings to this file").clicked() {
+                    self.save();
+                    log::info!("saved config to {:?}", current_name);
                 }
 
-                if cols[1].button(self.t("open_folder")).clicked() {
-                    let _ = std::process::Command::new("xdg-open")
-                        .arg(BASE_PATH.as_os_str())
-                        .status();
-                }
+                ui.columns(2, |cols| {
+                    if cols[0].button(self.t("reset")).clicked() {
+                        self.config = Config::default();
+                        self.active_preset = None;
+                        self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
+                        log::info!("reset settings to default");
+                    }
+
+                    if cols[1].button(self.t("open_folder")).clicked() {
+                        let _ = std::process::Command::new("xdg-open")
+                            .arg(BASE_PATH.as_os_str())
+                            .status();
+                    }
+                });
             });
         });
 
@@ -101,15 +106,12 @@ impl App {
             ui.horizontal(|ui| {
                 ui.label(format!("{}:", self.t("language")));
                 let mut lang = self.config.language;
-                if ui
-                    .selectable_value(&mut lang, Language::English, "English")
-                    .changed()
-                    || ui
-                        .selectable_value(&mut lang, Language::Russian, "Русский")
-                        .changed()
-                {
+                if ui.selectable_value(&mut lang, Language::English, "English").changed() ||
+                   ui.selectable_value(&mut lang, Language::Russian, "Русский").changed() {
                     self.config.language = lang;
-                    self.send_config();
+                    self.active_preset = None;
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
+                    self.save();
                 }
             });
 
@@ -135,7 +137,9 @@ impl App {
                         {
                             self.config.accent_color = color;
                             ctx.style_mut(|style| style.visuals.selection.bg_fill = color);
-                            self.send_config();
+                            self.active_preset = None;
+                            self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
+                            self.save();
                         }
                     }
                 });
@@ -145,60 +149,31 @@ impl App {
     fn config_presets(&mut self, ui: &mut Ui) {
         section(ui, self.t("presets"), None, |ui| {
             ui.vertical_centered_justified(|ui| {
-                if ui
-                    .button(
-                        egui::RichText::new(self.t("legit"))
-                            .strong()
-                            .color(Colors::GREEN),
-                    )
-                    .clicked()
-                {
+                if ui.add(Button::new(egui::RichText::new(self.t("legit")).strong().color(Colors::GREEN)).selected(self.active_preset == Some(0))).clicked() {
                     self.config.load_preset(0);
-                    self.send_config();
+                    self.active_preset = Some(0);
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
+                    // Do NOT call save() here to avoid overwriting custom profiles
                 }
-                if ui
-                    .button(
-                        egui::RichText::new(self.t("semi_legit"))
-                            .strong()
-                            .color(Colors::TEAL),
-                    )
-                    .clicked()
-                {
+                if ui.add(Button::new(egui::RichText::new(self.t("semi_legit")).strong().color(Colors::TEAL)).selected(self.active_preset == Some(1))).clicked() {
                     self.config.load_preset(1);
-                    self.send_config();
+                    self.active_preset = Some(1);
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
-                if ui
-                    .button(
-                        egui::RichText::new(self.t("recommended"))
-                            .strong()
-                            .color(self.config.accent_color),
-                    )
-                    .clicked()
-                {
+                if ui.add(Button::new(egui::RichText::new(self.t("recommended")).strong().color(self.config.accent_color)).selected(self.active_preset == Some(2))).clicked() {
                     self.config.load_preset(2);
-                    self.send_config();
+                    self.active_preset = Some(2);
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
-                if ui
-                    .button(
-                        egui::RichText::new(self.t("blatant"))
-                            .strong()
-                            .color(Colors::ORANGE),
-                    )
-                    .clicked()
-                {
+                if ui.add(Button::new(egui::RichText::new(self.t("blatant")).strong().color(Colors::ORANGE)).selected(self.active_preset == Some(3))).clicked() {
                     self.config.load_preset(3);
-                    self.send_config();
+                    self.active_preset = Some(3);
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
-                if ui
-                    .button(
-                        egui::RichText::new(self.t("rage"))
-                            .strong()
-                            .color(Colors::RED),
-                    )
-                    .clicked()
-                {
+                if ui.add(Button::new(egui::RichText::new(self.t("rage")).strong().color(Colors::RED)).selected(self.active_preset == Some(4))).clicked() {
                     self.config.load_preset(4);
-                    self.send_config();
+                    self.active_preset = Some(4);
+                    self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
             });
         });

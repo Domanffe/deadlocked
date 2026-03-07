@@ -35,8 +35,12 @@ impl App {
         Trans::get(self.config.language, key)
     }
 
-    pub fn send_config(&self) {
-        self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
+    pub fn send_config(&mut self) {
+        self.active_preset = None;
+        self.send_message(
+            Message::Config(Box::new(self.config.clone())),
+            Target::Game,
+        );
         self.save();
     }
 

@@ -57,6 +57,7 @@ impl Trans {
                 "rage" => "Rage",
                 "language" => "Language",
                 "accent_color" => "Primary Color",
+                "save_profile" => "Save to Current Profile",
                 "lineups" => "Saved Lineups",
                 "record_lineup" => "Capture Lineup",
                 "edit_lineup" => "Edit Lineup",
