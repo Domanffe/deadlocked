@@ -64,6 +64,12 @@ impl Default for Config {
 
 impl Config {
     pub fn load_preset(&mut self, tier: u32) {
+        let lang = self.language;
+        let accent = self.accent_color;
+        *self = Config::default();
+        self.language = lang;
+        self.accent_color = accent;
+
         match tier {
             0 => {
                 // Legit

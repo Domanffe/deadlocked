@@ -539,7 +539,7 @@ impl CS2 {
             }
 
             if player == local_player {
-                self.target.local_pawn_index = i - 1;
+                self.target.local_pawn_index = i;
             } else {
                 self.players.push(player);
             }

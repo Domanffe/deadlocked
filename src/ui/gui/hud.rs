@@ -227,14 +227,14 @@ impl App {
                 if checkbox(ui, self.t("hitmarker"), &mut self.config.hud.hitmarker) {
                     self.send_config();
                 }
-                if self.config.hud.hitmarker {
-                    if color_picker(
+                if self.config.hud.hitmarker
+                    && color_picker(
                         ui,
                         self.t("hitmarker_color"),
                         &mut self.config.hud.hitmarker_color,
-                    ) {
-                        self.send_config();
-                    }
+                    )
+                {
+                    self.send_config();
                 }
 
                 if checkbox(
@@ -244,14 +244,14 @@ impl App {
                 ) {
                     self.send_config();
                 }
-                if self.config.hud.bullet_tracers {
-                    if color_picker(
+                if self.config.hud.bullet_tracers
+                    && color_picker(
                         ui,
                         self.t("tracer_color"),
                         &mut self.config.hud.tracer_color,
-                    ) {
-                        self.send_config();
-                    }
+                    )
+                {
+                    self.send_config();
                 }
             },
         );

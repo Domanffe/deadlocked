@@ -124,6 +124,11 @@ impl CS2 {
                 continue;
             }
 
+            // Strictly enforce visibility in target selection
+            if aimbot_config.visibility_check && !player.visible(self, &local_player) {
+                continue;
+            }
+
             let head_position = player.bone_position(self, Bones::Head.u64());
             let distance = eye_position.distance(head_position);
             let angle = self.angle_to_target(&local_player, &head_position, &aim_punch);

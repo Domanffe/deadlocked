@@ -196,16 +196,16 @@ impl App {
                 self.send_config();
             }
 
-            if self.weapon_config().aimbot.multipoint {
-                if drag(
+            if self.weapon_config().aimbot.multipoint
+                && drag(
                     ui,
                     self.t("multipoint_scale"),
                     DragValue::new(&mut self.weapon_config().aimbot.multipoint_scale)
                         .range(0.1..=1.0)
                         .speed(0.05),
-                ) {
-                    self.send_config();
-                }
+                )
+            {
+                self.send_config();
             }
 
             ui.add_space(4.0);
