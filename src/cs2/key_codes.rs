@@ -1,5 +1,5 @@
 #![allow(unused)]
-use egui::{Key, PointerButton};
+use egui::{Key, Modifiers, PointerButton};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 

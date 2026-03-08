@@ -336,7 +336,7 @@ pub fn check_uinput() -> bool {
     }
     if File::options().write(true).open(path).is_err() {
         log::error!("user has no write permissions for /dev/uinput.");
-        log::error!("did you add your user to the input group?");
+        log::error!("did you run the setup script?");
         log::error!("please carefully read the readme before using.");
         return false;
     }

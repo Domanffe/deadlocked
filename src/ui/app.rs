@@ -158,7 +158,7 @@ impl ApplicationHandler for App {
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
         window_id: winit::window::WindowId,
-        event: WindowEvent,
+        window_event: WindowEvent,
     ) {
         while let Ok(message) = self.rx.try_recv() {
             match message {
@@ -183,14 +183,13 @@ impl ApplicationHandler for App {
             return;
         };
 
-        match event {
+        match &window_event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(new_size) => {
-                window.resize(new_size);
+                window.resize(*new_size);
             }
             WindowEvent::KeyboardInput {
-                event: ref key_event,
-                ..
+                event: key_event, ..
             } => {
                 use winit::keyboard::{Key, NamedKey};
                 match key_event.logical_key {
@@ -202,7 +201,7 @@ impl ApplicationHandler for App {
                     _ => {}
                 }
 
-                let event_response = self.gui.as_mut().unwrap().process_event(&event);
+                let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
                 if event_response.repaint {
                     self.gui.as_ref().unwrap().request_redraw();
                     self.overlay.as_ref().unwrap().request_redraw();
@@ -217,7 +216,7 @@ impl ApplicationHandler for App {
                 self.render();
             }
             _ => {
-                let event_response = self.gui.as_mut().unwrap().process_event(&event);
+                let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
 
                 if event_response.repaint {
                     self.gui.as_ref().unwrap().request_redraw();
