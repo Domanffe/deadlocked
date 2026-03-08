@@ -102,8 +102,7 @@ pub struct InfernoOffsets {
 
 #[derive(Debug, Default)]
 pub struct SpottedStateOffsets {
-    pub spotted: u64, // bool (m_bSpotted)
-    pub mask: u64,    // i32[2] or u64? (m_bSpottedByMask)
+    pub mask: u64, // i32[2] or u64? (m_bSpottedByMask)
 }
 
 #[derive(Debug, Default)]
