@@ -189,6 +189,18 @@ impl WindowContext {
         self.egui_glow.on_window_event(&self.window, event)
     }
 
+    pub fn process_modifier(&mut self) {
+        self.egui_glow.egui_ctx.input_mut(|i| {
+            i.events.push(egui::Event::Key {
+                key: egui::Key::F35,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: i.modifiers,
+            });
+        });
+    }
+
     pub fn request_redraw(&self) {
         self.window.request_redraw();
     }

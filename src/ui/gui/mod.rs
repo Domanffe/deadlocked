@@ -37,10 +37,7 @@ impl App {
 
     pub fn send_config(&mut self) {
         self.active_preset = None;
-        self.send_message(
-            Message::Config(Box::new(self.config.clone())),
-            Target::Game,
-        );
+        self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
         self.save();
     }
 

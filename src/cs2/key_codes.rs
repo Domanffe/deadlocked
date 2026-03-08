@@ -49,6 +49,9 @@ pub enum KeyCode {
     Delete,
     Home,
     End,
+    LeftShift = 80,
+    LeftAlt = 82,
+    LeftControl = 84,
     MouseLeft = 317,
     MouseRight,
     MouseMiddle,
@@ -174,6 +177,19 @@ impl KeyCode {
             PointerButton::Extra1 => Self::Mouse4,
             PointerButton::Extra2 => Self::Mouse5,
         }
+    }
+
+    pub fn from_egui_modifiers(modifiers: egui::Modifiers) -> Option<Self> {
+        if modifiers.shift {
+            return Some(Self::LeftShift);
+        }
+        if modifiers.alt {
+            return Some(Self::LeftAlt);
+        }
+        if modifiers.command || modifiers.ctrl {
+            return Some(Self::LeftControl);
+        }
+        None
     }
 
     pub fn usize(self) -> usize {

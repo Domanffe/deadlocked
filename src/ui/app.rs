@@ -188,6 +188,26 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(new_size) => {
                 window.resize(new_size);
             }
+            WindowEvent::KeyboardInput {
+                event: ref key_event,
+                ..
+            } => {
+                use winit::keyboard::{Key, NamedKey};
+                match key_event.logical_key {
+                    Key::Named(NamedKey::Control)
+                    | Key::Named(NamedKey::Shift)
+                    | Key::Named(NamedKey::Alt) => {
+                        self.gui.as_mut().unwrap().process_modifier();
+                    }
+                    _ => {}
+                }
+
+                let event_response = self.gui.as_mut().unwrap().process_event(&event);
+                if event_response.repaint {
+                    self.gui.as_ref().unwrap().request_redraw();
+                    self.overlay.as_ref().unwrap().request_redraw();
+                }
+            }
             WindowEvent::RedrawRequested => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
                     self.next_frame_time,

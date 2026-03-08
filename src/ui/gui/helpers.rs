@@ -178,6 +178,9 @@ impl<'gui> Widget for Keybind<'gui> {
                         key, pressed: true, ..
                     } = event
                     {
+                        if *key == egui::Key::F35 {
+                            return KeyCode::from_egui_modifiers(i.modifiers);
+                        }
                         return KeyCode::from_egui(*key);
                     }
 

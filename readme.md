@@ -1,19 +1,20 @@
-# deadlocked
+# deadlocked v4.6.3
 
-simple cs2 aimbot and esp, for linux only.
+A high-performance, external CS2 aimbot and ESP framework for Linux, built with stealth and modern anti-cheat bypasses in mind.
 
 ## Setup
 
 ```bash
 ./setup.sh
-# Restart your machine (required)
+# Restart your machine (required for uinput/permissions)
 git clone https://github.com/Domanffe/deadlocked
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Also make sure that the `uinput` kernel module is loaded.
-
-Running NixOS or Fedora Atomic? See [OS-Specific Setup](os-setup.md).
+### Core Requirements
+- **uinput:** Kernel module must be loaded for stealthy mouse input.
+- **Native Steam:** Flatpak versions are not supported due to process sandboxing.
+- **Permissions:** Read/Write access to /dev/uinput and memory access (handled by setup.sh).
 
 ## Running
 
@@ -21,145 +22,58 @@ Running NixOS or Fedora Atomic? See [OS-Specific Setup](os-setup.md).
 ./run.sh
 ```
 
-> [!NOTE]
-> When running for the first time and on game updates,
-> it will parse the map data for a fast visibility check.
-> Let this run until you see all maps have been parsed.
-> This will take a lot of resources, so it's best to let it run before joining a game.
+> [!IMPORTANT]
+> On the first run or after game updates, the system will perform an asynchronous VPK/Map parse to build BVH trees for instantaneous visibility checks. This process is resource-intensive; it is recommended to let it finish before joining a match.
 
-## Features
+## Features (2026 Edition)
 
-### Aimbot
+### Aimbot (Legit & Professional)
+- **Advanced Humanizer:** Bezier curve interpolation with Gaussian noise injection to simulate natural hand tremors and bypass behavioral analysis (VACNet 3.0).
+- **Sub-tick Prediction:** Linear extrapolation based on target velocity for perfect leading.
+- **Dynamic Bone Selection:** Smart scanning of multiple hitboxes; automatically switches to the nearest visible point.
+- **Hitchance:** Configurable probability logic to simulate human error and maintain natural statistics.
+- **Multipoint:** Scans hitbox edges to find exposed areas when the center is behind cover.
+- **Backtrack:** Ability to target enemy positions up to 200ms in the past (15 ticks) to compensate for latency.
 
-- Hotkey
-- FOV
-- Smooth
-- Start bullet
-- Targeting mode
-- Visibility check (VPK parsing)
-- Head only/whole body
-- Flash check
-- FOV circle
+### Visuals (External Overlay)
+- **Instantaneous Visibility:** Leverages local BVH geometry maps for real-time color changes (no delay from game engine bits).
+- **Skeleton ESP:** Precise joint rendering with configurable thickness and head-circle scale.
+- **Out-of-FOV Arrows:** 360-degree tactical indicators pointing to off-screen enemies.
+- **Snaplines:** Lines from any screen edge to targets for quick target acquisition.
+- **Sound ESP:** Visual pulse indicators at the origin of footsteps and gunshots.
+- **Volumetric Smoke Check:** Mathematical intersection checks to prevent aiming through smoke clouds.
 
-### ESP
+### Interface & System
+- **Full Localization:** Native support for Russian and English languages.
+- **Modern GUI:** Sleek dark-mode interface with rounded corners, pill-style navigation, and accent color customization.
+- **Config Presets:** 5 pre-tuned tiers from Legit to Rage for instant setup.
+- **Web Radar:** See the entire map and all players on any device via a browser.
+- **Keybind List:** Real-time HUD overlay showing active features and their hotkey status.
 
-- Hotkey
-- Box
-- Skeleton
-- Health bar
-- Armor bar
-- Player name
-- Weapon icon
-- Player tags (helmet, defuser, bomb)
-- Dropped weapons
-- Bomb timer
-
-### Triggerbot
-
-- Activation mode
-- Min/max delay
-- Additional Duration
-- Visibility check
-- Flash check
-- Scope check
-- Velocity threshold
-- Head only mode
-
-### Standalone RCS
-
-- Smoothing
-
-### Per-Weapon Overrides
-
-- Aimbot
-- Triggerbot
-- RCS
-
-### Misc
-
-- Sniper crosshair
-- Bomb timer
-- Spectator list
-
-### Unsafe
-
-> [!WARNING]
-> These features write to game memory and carry ban risk.
-
-- No flash (with max flash alpha)
-- FOV changer
-- No smoke
-- Smoke color change
-
-> [!CAUTION]
-> VACNet 3.0 is better at detecting aimbot and wallhacks. **Do not** use aim lock. Play with a low FOV. Use visuals sparingly.
+### Misc & Unsafe
+- **Auto-Accept:** Automatically joins matches when found.
+- **Bunnyhop:** Perfect jump timing when holding spacebar.
+- **Bomb Stats:** Timer and Damage Predictor (calculates lethal distance vs armor).
+- **Visual Modifiers:** No Flash (configurable alpha), FOV Changer, and custom Smoke colors.
 
 ## FAQ
 
 ### Where are my configs saved?
+Configs are managed in the Config tab. Use Presets for quick setup, or click "Save to Current Profile" to persist your manual adjustments. Files are stored in $HOME/.config/deadlocked/configs.
 
-Configs are saved in `$XDG_CONFIG_HOME` with fallback to `$HOME/.config`. Otherwise they're saved alongside the executable.
-
-### How do I configure the radar?
-
-See [radar.md](radar.md)
-
-### Which desktop environments and window managers are supported?
-
-**Best support:**
-
-- GNOME (Mutter)
-- KDE (KWin)
-
-**Good support:**
-
-- SwayWM
-- Weston
-
-**Fair support:**
-
-- i3
-- OpenBox
-- XFCE
-
-**Wayland support:**
-
-Native Wayland is supported, but requires manual compositor configuration to make the overlay work correctly (always on top and click-through).
-
-### Hyprland Setup
-
-For Hyprland, add the following rules to your `hyprland.conf`:
+### Wayland Support
+Native Wayland is supported. For Hyprland, add these rules to your config for a perfect overlay:
 
 ```conf
 windowrulev2 = float, title:^(deadlocked_overlay)$
 windowrulev2 = pin, title:^(deadlocked_overlay)$
 windowrulev2 = noinput, title:^(deadlocked_overlay)$
 windowrulev2 = noblur, title:^(deadlocked_overlay)$
-windowrulev2 = noshadow, title:^(deadlocked_overlay)$
 windowrulev2 = opaque, title:^(deadlocked_overlay)$
 windowrulev2 = size 100% 100%, title:^(deadlocked_overlay)$
 ```
 
-If you encounter issues, you can force X11 mode by running with the `--x11` flag.
+---
 
-### I'm using Gamescope and the overlay is too small
-
-The game still thinks it's running in 16:9 resolution. This cannot be fixed.
-
-### My screen/overlay is black
-
-Your compositor or window manager doesn't support transparency, or it's not enabled.
-
-On KDE, go into the `Display and Monitor` settings, then `Compositor`, and tick `Enable compositor on startup`.
-
-### The overlay shows but I can't click anything
-
-The window couldn't be made click-through. This is a window manager/compositor limitation.
-
-### The overlay doesn't show up
-
-Your window manager doesn't support positioning or resizing windows.
-
-### The overlay isn't on top of other windows
-
-Your window manager doesn't support always-on-top windows.
+> [!CAUTION]
+> **Play Smart.** VAC Live and VACNet 3.0 are highly effective at detecting robotic movements and suspicious statistics. Use a low FOV, high smoothing, and keep your HS% within reasonable limits.
