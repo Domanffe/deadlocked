@@ -1,8 +1,8 @@
-use crate::utils::log;
 use egui::{Align, Context};
+use utils::log;
 
 use crate::{
-    config::{Language, WeaponConfig, write_config},
+    config::{WeaponConfig, write_config},
     message::{Envelope, GameStatus, Message, Target},
     ui::{app::App, color::Colors, gui::aimbot::AimbotTab},
 };
@@ -113,7 +113,7 @@ impl App {
                     self.sidebar_button(ui, Tab::Player, "\u{f0013}", self.t("player_esp"));
                     self.sidebar_button(ui, Tab::Hud, "\u{f0379}", self.t("hud"));
                     self.sidebar_button(ui, Tab::Radar, "\u{f0437}", self.t("radar"));
-                    self.sidebar_button(ui, Tab::Grenades, "\u{f0691}", "Grenades"); // User said "except game-dynamic", but Grenades is a static tab
+                    self.sidebar_button(ui, Tab::Grenades, "\u{f0691}", self.t("grenades"));
                     self.sidebar_button(ui, Tab::Unsafe, "\u{f0ce6}", self.t("unsafe"));
                     self.sidebar_button(ui, Tab::Config, "\u{f168b}", self.t("config"));
                 });
@@ -121,7 +121,7 @@ impl App {
                 ui.with_layout(egui::Layout::bottom_up(Align::Center), |ui| {
                     ui.add_space(10.0);
                     if ui
-                        .button(egui::RichText::new("Report Issue").small())
+                        .button(egui::RichText::new(self.t("report_issue")).small())
                         .clicked()
                     {
                         let _ = std::process::Command::new("xdg-open")
@@ -131,22 +131,8 @@ impl App {
 
                     ui.add_space(10.0);
                     let (status_text, status_color) = match self.game_status {
-                        GameStatus::Working => (
-                            if self.config.language == Language::Russian {
-                                "Система активна"
-                            } else {
-                                "System Live"
-                            },
-                            Colors::GREEN,
-                        ),
-                        GameStatus::NotStarted => (
-                            if self.config.language == Language::Russian {
-                                "Ожидание CS2"
-                            } else {
-                                "Waiting for CS2"
-                            },
-                            Colors::YELLOW,
-                        ),
+                        GameStatus::Working => (self.t("system_active"), Colors::GREEN),
+                        GameStatus::NotStarted => (self.t("waiting_game"), Colors::YELLOW),
                     };
 
                     ui.horizontal(|ui| {

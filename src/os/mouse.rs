@@ -7,9 +7,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::utils::log;
 use glam::Vec2;
 use nix::{ioctl_none, ioctl_write_int, ioctl_write_ptr, libc::c_ulong};
+use utils::log;
 
 #[derive(Debug, Clone, Copy)]
 struct Timeval {

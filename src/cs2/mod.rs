@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::utils::{log, sync::Mutex};
 use glam::{IVec2, Mat4, Vec2, Vec3};
+use utils::{log, sync::Mutex};
 
 use crate::{
     config::{AimbotConfig, Config, KeyMode, RcsConfig, TriggerbotConfig},
@@ -126,7 +126,7 @@ impl Game for CS2 {
 
         self.aimbot(config, mouse);
 
-        self.leaderboard();
+        self.leaderboard(config);
     }
 
     fn data(&self, config: &Config, data: &mut Data) {

@@ -1,5 +1,5 @@
-use crate::utils::log;
 use glam::vec2;
+use utils::log;
 
 use crate::{
     config::{Config, KeyMode},

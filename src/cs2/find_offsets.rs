@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::utils::log;
+use utils::log;
 
 use crate::{
     constants::cs2,

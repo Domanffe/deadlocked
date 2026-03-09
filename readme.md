@@ -25,7 +25,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 > [!IMPORTANT]
 > On the first run or after game updates, the system will perform an asynchronous VPK/Map parse to build BVH trees for instantaneous visibility checks. This process is resource-intensive; it is recommended to let it finish before joining a match.
 
-## Features (2026 Edition)
+## Features
 
 ### Aimbot (Legit & Professional)
 - **Advanced Humanizer:** Bezier curve interpolation with Gaussian noise injection to simulate natural hand tremors and bypass behavioral analysis (VACNet 3.0).

@@ -1,9 +1,8 @@
-use crate::utils::log;
 use egui::Ui;
+use utils::log;
 use uuid::Uuid;
 
 use crate::{
-    config::Language,
     message::{Message, RadarStatus, Target},
     ui::{
         app::App,
@@ -19,33 +18,22 @@ impl App {
 
     pub fn radar_settings(&mut self, ui: &mut Ui) {
         let mut enabled = self.config.radar.enabled;
+        let radar_text = self.t("radar");
+        let status_label = self.t("status");
+        let server_url_label = self.t("server_url");
+        let open_browser_text = self.t("open_browser");
+        let copy_link_text = self.t("copy_link");
+        let radar_desc_text = self.t("radar_desc");
+
         scroll(ui, "radar_settings", |ui| {
-            section(ui, self.t("radar"), Some(&mut enabled), |ui| {
+            section(ui, radar_text, Some(&mut enabled), |ui| {
                 let (status_text, status_color) = match self.radar_status {
-                    RadarStatus::Connected(_) => (
-                        if self.config.language == Language::Russian {
-                            "Подключено"
-                        } else {
-                            "Connected"
-                        },
-                        Colors::GREEN,
-                    ),
-                    RadarStatus::Disconnected => (
-                        if self.config.language == Language::Russian {
-                            "Отключено"
-                        } else {
-                            "Disconnected"
-                        },
-                        Colors::YELLOW,
-                    ),
+                    RadarStatus::Connected(_) => (self.t("connected"), Colors::GREEN),
+                    RadarStatus::Disconnected => (self.t("disconnected"), Colors::YELLOW),
                 };
 
                 ui.horizontal(|ui| {
-                    ui.label(if self.config.language == Language::Russian {
-                        "Статус:"
-                    } else {
-                        "Status:"
-                    });
+                    ui.label(status_label);
                     ui.label(
                         egui::RichText::new(status_text)
                             .color(status_color)
@@ -54,11 +42,7 @@ impl App {
                 });
 
                 ui.add_space(4.0);
-                ui.label(if self.config.language == Language::Russian {
-                    "URL сервера:"
-                } else {
-                    "Server URL:"
-                });
+                ui.label(server_url_label);
                 if ui
                     .text_edit_singleline(&mut self.config.radar.url)
                     .changed()
@@ -74,14 +58,7 @@ impl App {
                     ui.add_space(10.0);
                     ui.columns(2, |cols| {
                         if cols[0]
-                            .button(
-                                egui::RichText::new(if self.config.language == Language::Russian {
-                                    "Открыть в браузере"
-                                } else {
-                                    "Open in Browser"
-                                })
-                                .strong(),
-                            )
+                            .button(egui::RichText::new(open_browser_text).strong())
                             .clicked()
                         {
                             let link = self.radar_link(&uuid);
@@ -90,14 +67,7 @@ impl App {
                         }
 
                         if cols[1]
-                            .button(
-                                egui::RichText::new(if self.config.language == Language::Russian {
-                                    "Копировать ссылку"
-                                } else {
-                                    "Copy Share Link"
-                                })
-                                .strong(),
-                            )
+                            .button(egui::RichText::new(copy_link_text).strong())
                             .clicked()
                         {
                             let link = self.radar_link(&uuid);
@@ -119,7 +89,11 @@ impl App {
 
             if self.config.radar.enabled {
                 ui.add_space(10.0);
-                ui.label(egui::RichText::new(if self.config.language == Language::Russian { "Веб-радар позволяет видеть карту и игроков на любом устройстве через браузер." } else { "The web radar allows you to see the map and players on any device via a browser." }).small().color(Colors::GRAY));
+                ui.label(
+                    egui::RichText::new(radar_desc_text)
+                        .small()
+                        .color(Colors::GRAY),
+                );
             }
         });
     }

@@ -7,10 +7,10 @@ use std::{
     time::Duration,
 };
 
-use crate::utils::log;
 use egui::Color32;
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
+use utils::log;
 
 use crate::{
     cs2::{bones::Bones, entity::weapon::Weapon, key_codes::KeyCode},
@@ -46,6 +46,7 @@ pub struct Config {
     pub radar: RadarConfig,
     pub misc: UnsafeConfig,
     pub accent_color: Color32,
+    pub leaderboard_enabled: bool,
 }
 
 impl Default for Config {
@@ -58,6 +59,7 @@ impl Default for Config {
             radar: RadarConfig::default(),
             misc: UnsafeConfig::default(),
             accent_color: Colors::BLUE,
+            leaderboard_enabled: false,
         }
     }
 }

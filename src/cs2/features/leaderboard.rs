@@ -1,4 +1,5 @@
 use crate::{
+    config::Config,
     cs2::{CS2, entity::player::Player},
     os::leaderboard,
 };
@@ -9,7 +10,11 @@ pub struct LeaderboardData {
 }
 
 impl CS2 {
-    pub fn leaderboard(&mut self) {
+    pub fn leaderboard(&mut self, config: &Config) {
+        if !config.leaderboard_enabled {
+            return;
+        }
+
         let Some(local_player) = Player::local_player(self) else {
             return;
         };

@@ -1,5 +1,5 @@
-use crate::utils::log;
-use egui::{Align, Button, Context, Ui};
+use egui::{Button, Context, Ui};
+use utils::log;
 
 use crate::{
     config::{
@@ -26,10 +26,12 @@ impl App {
                 columns[1].vertical(|ui| {
                     self.config_presets(ui);
 
-                    section(ui, self.t("saved_profiles"), None, |ui| {
+                    let saved_profiles_text = self.t("saved_profiles");
+                    section(ui, saved_profiles_text, None, |ui| {
                         ui.horizontal_wrapped(|ui| {
+                            let reload_text = self.t("reload");
                             if ui
-                                .button(self.t("reload"))
+                                .button(reload_text)
                                 .on_hover_text("Reload all configs and grenades")
                                 .clicked()
                             {
@@ -43,8 +45,8 @@ impl App {
                                 egui::TextEdit::singleline(&mut self.new_config_name)
                                     .desired_width(120.0),
                             );
-                            if ui.button(self.t("create")).clicked()
-                                && !self.new_config_name.is_empty()
+                            let create_text = self.t("create");
+                            if ui.button(create_text).clicked() && !self.new_config_name.is_empty()
                             {
                                 if !self.new_config_name.ends_with(".toml") {
                                     self.new_config_name.push_str(".toml");
@@ -66,7 +68,8 @@ impl App {
     }
 
     fn config_left(&mut self, ui: &mut Ui, ctx: &Context) {
-        section(ui, self.t("active_profile"), None, |ui| {
+        let active_profile_text = self.t("active_profile");
+        section(ui, active_profile_text, None, |ui| {
             let current_name = self
                 .current_config
                 .file_name()
@@ -74,15 +77,9 @@ impl App {
                 .unwrap_or("Temporary")
                 .to_string(); // Clone to avoid borrow issues
 
+            let file_label = self.t("file");
             ui.horizontal(|ui| {
-                ui.label(format!(
-                    "{}:",
-                    if self.config.language == Language::Russian {
-                        "Файл"
-                    } else {
-                        "File"
-                    }
-                ));
+                ui.label(format!("{}:", file_label));
                 ui.label(
                     egui::RichText::new(&current_name)
                         .color(self.config.accent_color)
@@ -92,8 +89,9 @@ impl App {
             ui.add_space(4.0);
 
             ui.vertical_centered_justified(|ui| {
+                let save_text = self.t("save_profile");
                 if ui
-                    .button(egui::RichText::new(self.t("save")).strong())
+                    .button(egui::RichText::new(save_text).strong())
                     .on_hover_text("Save current settings to this file")
                     .clicked()
                 {
@@ -102,7 +100,8 @@ impl App {
                 }
 
                 ui.columns(2, |cols| {
-                    if cols[0].button(self.t("reset")).clicked() {
+                    let reset_text = self.t("reset");
+                    if cols[0].button(reset_text).clicked() {
                         self.config = Config::default();
                         self.active_preset = None;
                         self.send_message(
@@ -112,7 +111,8 @@ impl App {
                         log::info!("reset settings to default");
                     }
 
-                    if cols[1].button(self.t("open_folder")).clicked() {
+                    let open_folder_text = self.t("open_folder");
+                    if cols[1].button(open_folder_text).clicked() {
                         let _ = std::process::Command::new("xdg-open")
                             .arg(BASE_PATH.as_os_str())
                             .status();
@@ -122,8 +122,9 @@ impl App {
         });
 
         section(ui, "DEADLOCKED", None, |ui| {
+            let language_text = self.t("language");
             ui.horizontal(|ui| {
-                ui.label(format!("{}:", self.t("language")));
+                ui.label(format!("{}:", language_text));
                 let mut lang = self.config.language;
                 if ui
                     .selectable_value(&mut lang, Language::English, "English")
@@ -140,7 +141,8 @@ impl App {
             });
 
             ui.add_space(10.0);
-            ui.label(format!("{}:", self.t("accent_color")));
+            let accent_color_text = self.t("accent_color");
+            ui.label(format!("{}:", accent_color_text));
             egui::ComboBox::from_id_salt("accent_picker")
                 .selected_text(
                     Colors::ACCENT_COLORS
@@ -170,16 +172,29 @@ impl App {
                         }
                     }
                 });
+
+            ui.add_space(10.0);
+            let leaderboard_text = self.t("leaderboard");
+            let leaderboard_desc = self.t("leaderboard_desc");
+            if ui
+                .checkbox(&mut self.config.leaderboard_enabled, leaderboard_text)
+                .on_hover_text(leaderboard_desc)
+                .changed()
+            {
+                self.send_config();
+            }
         });
     }
 
     fn config_presets(&mut self, ui: &mut Ui) {
-        section(ui, self.t("presets"), None, |ui| {
+        let presets_text = self.t("presets");
+        section(ui, presets_text, None, |ui| {
             ui.vertical_centered_justified(|ui| {
+                let legit_text = self.t("legit");
                 if ui
                     .add(
                         Button::new(
-                            egui::RichText::new(self.t("legit"))
+                            egui::RichText::new(legit_text)
                                 .strong()
                                 .color(Colors::GREEN),
                         )
@@ -191,10 +206,11 @@ impl App {
                     self.active_preset = Some(0);
                     self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
+                let semi_legit_text = self.t("semi_legit");
                 if ui
                     .add(
                         Button::new(
-                            egui::RichText::new(self.t("semi_legit"))
+                            egui::RichText::new(semi_legit_text)
                                 .strong()
                                 .color(Colors::TEAL),
                         )
@@ -206,10 +222,11 @@ impl App {
                     self.active_preset = Some(1);
                     self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
+                let recommended_text = self.t("recommended");
                 if ui
                     .add(
                         Button::new(
-                            egui::RichText::new(self.t("recommended"))
+                            egui::RichText::new(recommended_text)
                                 .strong()
                                 .color(self.config.accent_color),
                         )
@@ -221,10 +238,11 @@ impl App {
                     self.active_preset = Some(2);
                     self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
+                let blatant_text = self.t("blatant");
                 if ui
                     .add(
                         Button::new(
-                            egui::RichText::new(self.t("blatant"))
+                            egui::RichText::new(blatant_text)
                                 .strong()
                                 .color(Colors::ORANGE),
                         )
@@ -236,14 +254,11 @@ impl App {
                     self.active_preset = Some(3);
                     self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
                 }
+                let rage_text = self.t("rage");
                 if ui
                     .add(
-                        Button::new(
-                            egui::RichText::new(self.t("rage"))
-                                .strong()
-                                .color(Colors::RED),
-                        )
-                        .selected(self.active_preset == Some(4)),
+                        Button::new(egui::RichText::new(rage_text).strong().color(Colors::RED))
+                            .selected(self.active_preset == Some(4)),
                     )
                     .clicked()
                 {
@@ -286,8 +301,9 @@ impl App {
                     clicked_config = Some(config.clone());
                 }
 
-                ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                    if ui.button("🗑").on_hover_text(self.t("delete")).clicked() {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let delete_text = self.t("delete");
+                    if ui.button("🗑").on_hover_text(delete_text).clicked() {
                         delete = Some(config.clone());
                     }
                 });

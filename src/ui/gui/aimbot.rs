@@ -18,30 +18,18 @@ pub enum AimbotTab {
 
 impl App {
     pub fn aimbot_settings(&mut self, ui: &mut Ui) {
+        let global_text = self.t("global_settings");
+        let weapon_text = self.t("weapon_overrides");
+        let weapon_icon = self.t("weapon_icon");
+
         ui.horizontal(|ui| {
-            ui.selectable_value(
-                &mut self.aimbot_tab,
-                AimbotTab::Global,
-                if self.config.language == Language::Russian {
-                    "Глобальные"
-                } else {
-                    "Global Settings"
-                },
-            );
+            ui.selectable_value(&mut self.aimbot_tab, AimbotTab::Global, global_text);
             ui.add_space(8.0);
-            ui.selectable_value(
-                &mut self.aimbot_tab,
-                AimbotTab::Weapon,
-                if self.config.language == Language::Russian {
-                    "Для оружия"
-                } else {
-                    "Weapon Overrides"
-                },
-            );
+            ui.selectable_value(&mut self.aimbot_tab, AimbotTab::Weapon, weapon_text);
 
             if self.aimbot_tab == AimbotTab::Weapon {
                 ui.add_space(8.0);
-                combo_box(ui, "aimbot_weapon", "", &mut self.aimbot_weapon);
+                combo_box(ui, "aimbot_weapon", weapon_icon, &mut self.aimbot_weapon);
             }
         });
         ui.add_space(10.0);
@@ -58,15 +46,13 @@ impl App {
         let is_override = self.aimbot_tab == AimbotTab::Weapon;
         let mut enabled = self.weapon_config().aimbot.enabled;
 
-        section(ui, self.t("aimbot"), Some(&mut enabled), |ui| {
+        let aimbot_text = self.t("aimbot");
+        section(ui, aimbot_text, Some(&mut enabled), |ui| {
             if is_override {
+                let override_text = self.t("override_global");
                 if checkbox(
                     ui,
-                    if self.config.language == Language::Russian {
-                        "Перезаписать"
-                    } else {
-                        "Override Global"
-                    },
+                    override_text,
                     &mut self.weapon_config().aimbot.enable_override,
                 ) {
                     self.send_config();
@@ -74,27 +60,30 @@ impl App {
                 ui.add_space(4.0);
             }
 
+            let hotkey_text = self.t("hotkey");
             if keybind(
                 ui,
                 "aimbot_hotkey",
-                self.t("hotkey"),
+                hotkey_text,
                 &mut self.config.aim.aimbot_hotkey,
             ) {
                 self.send_config();
             }
 
+            let mode_text = self.t("mode");
             if combo_box(
                 ui,
                 "aimbot_mode",
-                self.t("mode"),
+                mode_text,
                 &mut self.weapon_config().aimbot.mode,
             ) {
                 self.send_config();
             }
 
+            let fov_text = self.t("fov");
             if drag(
                 ui,
-                self.t("fov"),
+                fov_text,
                 DragValue::new(&mut self.weapon_config().aimbot.fov)
                     .range(0.1..=180.0)
                     .speed(0.1),
@@ -102,9 +91,10 @@ impl App {
                 self.send_config();
             }
 
+            let smooth_text = self.t("smooth");
             if drag(
                 ui,
-                self.t("smooth"),
+                smooth_text,
                 DragValue::new(&mut self.weapon_config().aimbot.smooth)
                     .range(1.0..=20.0)
                     .speed(0.1),
@@ -112,25 +102,28 @@ impl App {
                 self.send_config();
             }
 
+            let backtrack_text = self.t("backtrack");
             if checkbox(
                 ui,
-                self.t("backtrack"),
+                backtrack_text,
                 &mut self.weapon_config().aimbot.backtrack,
             ) {
                 self.send_config();
             }
 
+            let humanizer_text = self.t("humanizer");
             if checkbox(
                 ui,
-                self.t("humanizer"),
+                humanizer_text,
                 &mut self.weapon_config().aimbot.advanced_humanizer,
             ) {
                 self.send_config();
             }
 
+            let hitchance_text = self.t("hitchance");
             if drag(
                 ui,
-                self.t("hitchance"),
+                hitchance_text,
                 DragValue::new(&mut self.weapon_config().aimbot.hitchance)
                     .range(0.0..=100.0)
                     .speed(1.0),
@@ -144,72 +137,65 @@ impl App {
             self.send_config();
         }
 
-        section(ui, self.t("targeting"), None, |ui| {
+        let targeting_text = self.t("targeting");
+        section(ui, targeting_text, None, |ui| {
+            let distance_fov = self.t("distance_fov");
+            let distance_fov_desc = self.t("distance_fov_desc");
             if checkbox_hover(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Авто-FOV по дистанции"
-                } else {
-                    "Distance-Adjusted FOV"
-                },
-                if self.config.language == Language::Russian {
-                    "Динамически менять FOV в зависимости от расстояния"
-                } else {
-                    "Dynamically scale FOV by distance"
-                },
+                distance_fov,
+                distance_fov_desc,
                 &mut self.weapon_config().aimbot.distance_adjusted_fov,
             ) {
                 self.send_config();
             }
 
+            let target_team = self.t("target_team");
+            let target_team_desc = self.t("target_team_desc");
             if checkbox_hover(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Целиться в своих"
-                } else {
-                    "Target Team"
-                },
-                if self.config.language == Language::Russian {
-                    "Включить для DM или кастомных режимов"
-                } else {
-                    "Enable for DM/Custom modes"
-                },
+                target_team,
+                target_team_desc,
                 &mut self.weapon_config().aimbot.target_friendlies,
             ) {
                 self.send_config();
             }
 
+            let targeting_mode_text = self.t("targeting");
             if combo_box(
                 ui,
                 "aim_targeting_mode",
-                self.t("targeting"),
+                targeting_mode_text,
                 &mut self.weapon_config().aimbot.targeting_mode,
             ) {
                 self.send_config();
             }
 
+            let multipoint_text = self.t("multipoint");
             if checkbox(
                 ui,
-                self.t("multipoint"),
+                multipoint_text,
                 &mut self.weapon_config().aimbot.multipoint,
             ) {
                 self.send_config();
             }
 
-            if self.weapon_config().aimbot.multipoint
-                && drag(
+            if self.weapon_config().aimbot.multipoint {
+                let scale_text = self.t("multipoint_scale");
+                if drag(
                     ui,
-                    self.t("multipoint_scale"),
+                    scale_text,
                     DragValue::new(&mut self.weapon_config().aimbot.multipoint_scale)
                         .range(0.1..=1.0)
                         .speed(0.05),
-                )
-            {
-                self.send_config();
+                ) {
+                    self.send_config();
+                }
             }
 
             ui.add_space(4.0);
-            ui.label(format!("{}:", self.t("bones")));
+            let bones_text = self.t("bones");
+            ui.label(format!("{}:", bones_text));
             ui.horizontal_wrapped(|ui| {
                 for bone in Bones::iter() {
                     let text = format!("{:?}", bone);
@@ -236,15 +222,13 @@ impl App {
         let is_override = self.aimbot_tab == AimbotTab::Weapon;
         let mut rcs_enabled = self.weapon_config().rcs.enabled;
 
-        section(ui, self.t("recoil_control"), Some(&mut rcs_enabled), |ui| {
+        let recoil_text = self.t("recoil_control");
+        section(ui, recoil_text, Some(&mut rcs_enabled), |ui| {
             if is_override {
+                let override_text = self.t("override_global");
                 if checkbox(
                     ui,
-                    if self.config.language == Language::Russian {
-                        "Перезаписать"
-                    } else {
-                        "Override Global"
-                    },
+                    override_text,
                     &mut self.weapon_config().rcs.enable_override,
                 ) {
                     self.send_config();
@@ -252,9 +236,10 @@ impl App {
                 ui.add_space(4.0);
             }
 
+            let rcs_smooth_text = self.t("recoil_smooth");
             if drag(
                 ui,
-                self.t("smooth"),
+                rcs_smooth_text,
                 DragValue::new(&mut self.weapon_config().rcs.smooth)
                     .range(0.0..=1.0)
                     .speed(0.01),
@@ -269,15 +254,13 @@ impl App {
         }
 
         let mut trigger_enabled = self.weapon_config().triggerbot.enabled;
-        section(ui, self.t("triggerbot"), Some(&mut trigger_enabled), |ui| {
+        let trigger_text = self.t("triggerbot");
+        section(ui, trigger_text, Some(&mut trigger_enabled), |ui| {
             if is_override {
+                let override_text = self.t("override_global");
                 if checkbox(
                     ui,
-                    if self.config.language == Language::Russian {
-                        "Перезаписать"
-                    } else {
-                        "Override Global"
-                    },
+                    override_text,
                     &mut self.weapon_config().triggerbot.enable_override,
                 ) {
                     self.send_config();
@@ -285,10 +268,11 @@ impl App {
                 ui.add_space(4.0);
             }
 
+            let hotkey_text = self.t("hotkey");
             if keybind(
                 ui,
                 "trigger_hotkey",
-                self.t("hotkey"),
+                hotkey_text,
                 &mut self.config.aim.triggerbot_hotkey,
             ) {
                 self.send_config();
@@ -319,20 +303,14 @@ impl App {
                     self.weapon_config().triggerbot.delay = start..=end;
                     self.send_config();
                 }
-                ui.label(if self.config.language == Language::Russian {
-                    "Задержка (мс)"
-                } else {
-                    "Delay (ms)"
-                });
+                let delay_text = self.t("delay");
+                ui.label(delay_text);
             });
 
+            let head_only_text = self.t("head_only");
             if checkbox(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Только голова"
-                } else {
-                    "Head Only"
-                },
+                head_only_text,
                 &mut self.weapon_config().triggerbot.head_only,
             ) {
                 self.send_config();
@@ -344,63 +322,52 @@ impl App {
             self.send_config();
         }
 
-        section(
-            ui,
-            if self.config.language == Language::Russian {
-                "Доп. Проверки"
-            } else {
-                "Extra Checks"
-            },
-            None,
-            |ui| {
-                if checkbox(
+        let extra_checks_text = self.t("extra_checks");
+        section(ui, extra_checks_text, None, |ui| {
+            let visibility_check_text = self.t("visibility_check");
+            if checkbox(
+                ui,
+                visibility_check_text,
+                &mut self.weapon_config().aimbot.visibility_check,
+            ) {
+                self.send_config();
+            }
+            let flash_check_text = self.t("flash_check");
+            if checkbox(
+                ui,
+                flash_check_text,
+                &mut self.weapon_config().aimbot.flash_check,
+            ) {
+                self.send_config();
+            }
+
+            ui.add_space(4.0);
+            ui.separator();
+            ui.add_space(4.0);
+
+            let prediction_text = self.t("prediction");
+            let prediction_desc = self.t("prediction_desc");
+            if checkbox_hover(
+                ui,
+                prediction_text,
+                prediction_desc,
+                &mut self.weapon_config().aimbot.prediction,
+            ) {
+                self.send_config();
+            }
+
+            if self.weapon_config().aimbot.prediction {
+                let strength_text = self.t("strength");
+                if drag(
                     ui,
-                    self.t("visibility_check"),
-                    &mut self.weapon_config().aimbot.visibility_check,
+                    strength_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.prediction_factor)
+                        .range(0.1..=5.0)
+                        .speed(0.1),
                 ) {
                     self.send_config();
                 }
-                if checkbox(
-                    ui,
-                    self.t("flash_check"),
-                    &mut self.weapon_config().aimbot.flash_check,
-                ) {
-                    self.send_config();
-                }
-
-                ui.add_space(4.0);
-                ui.separator();
-                ui.add_space(4.0);
-
-                if checkbox_hover(
-                    ui,
-                    self.t("prediction"),
-                    if self.config.language == Language::Russian {
-                        "Учитывать скорость цели (полезно для бегущих)"
-                    } else {
-                        "Compensate for target velocity (useful for moving targets)"
-                    },
-                    &mut self.weapon_config().aimbot.prediction,
-                ) {
-                    self.send_config();
-                }
-
-                if self.weapon_config().aimbot.prediction
-                    && drag(
-                        ui,
-                        if self.config.language == Language::Russian {
-                            "Сила"
-                        } else {
-                            "Strength"
-                        },
-                        DragValue::new(&mut self.weapon_config().aimbot.prediction_factor)
-                            .range(0.1..=5.0)
-                            .speed(0.1),
-                    )
-                {
-                    self.send_config();
-                }
-            },
-        );
+            }
+        });
     }
 }

@@ -5,9 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::utils::{log, sync::Mutex};
 use arboard::Clipboard;
 use crossbeam::channel::{Receiver, Sender};
+use utils::{log, sync::Mutex};
 use winit::{
     application::ApplicationHandler,
     event::{StartCause, WindowEvent},

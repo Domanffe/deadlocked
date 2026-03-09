@@ -5,6 +5,7 @@ edition = "2024"
 
 
 [dependencies]
+utils = { git = "https://github.com/avitran0/utils" }
 log = "0.4.29"
 parking_lot = "0.12.5"
 arboard = { version = "3.6.1", default-features = false }
@@ -51,3 +52,4 @@ debug = true
 
 [features]
 read-only = []
+

@@ -1,12 +1,9 @@
 use egui::{DragValue, Ui};
 
-use crate::{
-    config::Language,
-    ui::{
-        app::App,
-        gui::helpers::{
-            checkbox, checkbox_hover, color_picker, combo_box, drag, keybind, scroll, section,
-        },
+use crate::ui::{
+    app::App,
+    gui::helpers::{
+        checkbox, checkbox_hover, color_picker, combo_box, drag, keybind, scroll, section,
     },
 };
 
@@ -22,77 +19,43 @@ impl App {
                 });
             });
 
-            section(
-                ui,
-                if self.config.language == Language::Russian {
-                    "Цвета"
-                } else {
-                    "Colors"
-                },
-                None,
-                |ui| {
-                    ui.columns(2, |cols| {
-                        let left = &mut cols[0];
-                        let mut box_visible_color = self.config.player.box_visible_color;
-                        if color_picker(
-                            left,
-                            if self.config.language == Language::Russian {
-                                "Бокс (виден)"
-                            } else {
-                                "Box (visible)"
-                            },
-                            &mut box_visible_color,
-                        ) {
-                            self.config.player.box_visible_color = box_visible_color;
-                            self.send_config();
-                        }
+            section(ui, self.t("colors"), None, |ui| {
+                ui.columns(2, |cols| {
+                    let left = &mut cols[0];
+                    let mut box_visible_color = self.config.player.box_visible_color;
+                    if color_picker(left, self.t("box_visible"), &mut box_visible_color) {
+                        self.config.player.box_visible_color = box_visible_color;
+                        self.send_config();
+                    }
 
-                        let mut box_invisible_color = self.config.player.box_invisible_color;
-                        if color_picker(
-                            left,
-                            if self.config.language == Language::Russian {
-                                "Бокс (скрыт)"
-                            } else {
-                                "Box (invisible)"
-                            },
-                            &mut box_invisible_color,
-                        ) {
-                            self.config.player.box_invisible_color = box_invisible_color;
-                            self.send_config();
-                        }
+                    let mut box_invisible_color = self.config.player.box_invisible_color;
+                    if color_picker(left, self.t("box_invisible"), &mut box_invisible_color) {
+                        self.config.player.box_invisible_color = box_invisible_color;
+                        self.send_config();
+                    }
 
-                        let right = &mut cols[1];
-                        let mut skeleton_visible_color = self.config.player.skeleton_visible_color;
-                        if color_picker(
-                            right,
-                            if self.config.language == Language::Russian {
-                                "Скелет (виден)"
-                            } else {
-                                "Skeleton (visible)"
-                            },
-                            &mut skeleton_visible_color,
-                        ) {
-                            self.config.player.skeleton_visible_color = skeleton_visible_color;
-                            self.send_config();
-                        }
+                    let right = &mut cols[1];
+                    let mut skeleton_visible_color = self.config.player.skeleton_visible_color;
+                    if color_picker(
+                        right,
+                        self.t("skeleton_visible"),
+                        &mut skeleton_visible_color,
+                    ) {
+                        self.config.player.skeleton_visible_color = skeleton_visible_color;
+                        self.send_config();
+                    }
 
-                        let mut skeleton_invisible_color =
-                            self.config.player.skeleton_invisible_color;
-                        if color_picker(
-                            right,
-                            if self.config.language == Language::Russian {
-                                "Скелет (скрыт)"
-                            } else {
-                                "Skeleton (invisible)"
-                            },
-                            &mut skeleton_invisible_color,
-                        ) {
-                            self.config.player.skeleton_invisible_color = skeleton_invisible_color;
-                            self.send_config();
-                        }
-                    });
-                },
-            );
+                    let mut skeleton_invisible_color = self.config.player.skeleton_invisible_color;
+                    if color_picker(
+                        right,
+                        self.t("skeleton_invisible"),
+                        &mut skeleton_invisible_color,
+                    ) {
+                        self.config.player.skeleton_invisible_color = skeleton_invisible_color;
+                        self.send_config();
+                    }
+                });
+            });
         });
     }
 
@@ -102,11 +65,7 @@ impl App {
             if keybind(
                 ui,
                 "esp_hotkey",
-                if self.config.language == Language::Russian {
-                    "Переключить"
-                } else {
-                    "Hot-Toggle"
-                },
+                self.t("hot_toggle"),
                 &mut self.config.player.esp_hotkey,
             ) {
                 self.send_config();
@@ -114,16 +73,8 @@ impl App {
 
             if checkbox_hover(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Показывать своих"
-                } else {
-                    "Show Team"
-                },
-                if self.config.language == Language::Russian {
-                    "Показывать союзников в кастомных режимах"
-                } else {
-                    "Show friendlies in custom modes"
-                },
+                self.t("show_team"),
+                self.t("show_team_desc"),
                 &mut self.config.player.show_friendlies,
             ) {
                 self.send_config();
@@ -132,11 +83,7 @@ impl App {
             if combo_box(
                 ui,
                 "draw_box",
-                if self.config.language == Language::Russian {
-                    "Стиль боксов"
-                } else {
-                    "Box Style"
-                },
+                self.t("box_style"),
                 &mut self.config.player.draw_box,
             ) {
                 self.send_config();
@@ -145,11 +92,7 @@ impl App {
             if combo_box(
                 ui,
                 "box_mode",
-                if self.config.language == Language::Russian {
-                    "Заполнение"
-                } else {
-                    "Box Fill"
-                },
+                self.t("box_fill"),
                 &mut self.config.player.box_mode,
             ) {
                 self.send_config();
@@ -183,11 +126,7 @@ impl App {
 
             if drag(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Толщина"
-                } else {
-                    "Thickness"
-                },
+                self.t("thickness"),
                 egui::DragValue::new(&mut self.config.player.skeleton_thickness)
                     .range(0.1..=5.0)
                     .speed(0.1),
@@ -197,11 +136,7 @@ impl App {
 
             if checkbox(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Круг в голове"
-                } else {
-                    "Head Circle"
-                },
+                self.t("head_circle"),
                 &mut self.config.player.head_circle,
             ) {
                 self.send_config();
@@ -210,11 +145,7 @@ impl App {
             if checkbox_hover(
                 ui,
                 self.t("visible_only"),
-                if self.config.language == Language::Russian {
-                    "Скрывать игроков за стенами"
-                } else {
-                    "Hide players behind walls"
-                },
+                self.t("visible_only_desc"),
                 &mut self.config.player.visible_only,
             ) {
                 self.send_config();
@@ -248,11 +179,7 @@ impl App {
         section(ui, self.t("sound_esp"), Some(&mut sound_enabled), |ui| {
             if drag(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Затухание (с)"
-                } else {
-                    "Fadeout (s)"
-                },
+                self.t("fadeout"),
                 DragValue::new(&mut self.config.player.sound.fadeout_duration)
                     .range(0.0..=10.0)
                     .speed(0.01),
@@ -262,22 +189,14 @@ impl App {
 
             if checkbox(
                 ui,
-                if self.config.language == Language::Russian {
-                    "Показывать видимых"
-                } else {
-                    "Show Visible"
-                },
+                self.t("show_visible"),
                 &mut self.config.player.sound.show_visible,
             ) {
                 self.send_config();
             }
 
             ui.add_space(4.0);
-            ui.label(if self.config.language == Language::Russian {
-                "Дистанция обнаружения:"
-            } else {
-                "Detection Ranges:"
-            });
+            ui.label(self.t("detection_ranges"));
             ui.horizontal(|ui| {
                 if ui
                     .add(
@@ -289,11 +208,7 @@ impl App {
                 {
                     self.send_config();
                 }
-                ui.label(if self.config.language == Language::Russian {
-                    "Шаги"
-                } else {
-                    "Footstep"
-                });
+                ui.label(self.t("footstep"));
             });
             ui.horizontal(|ui| {
                 if ui
@@ -306,11 +221,7 @@ impl App {
                 {
                     self.send_config();
                 }
-                ui.label(if self.config.language == Language::Russian {
-                    "Выстрелы"
-                } else {
-                    "Gunshot"
-                });
+                ui.label(self.t("gunshot"));
             });
         });
 
@@ -321,54 +232,36 @@ impl App {
     }
 
     fn player_right(&mut self, ui: &mut Ui) {
-        section(
-            ui,
-            if self.config.language == Language::Russian {
-                "Информация"
-            } else {
-                "Information"
-            },
-            None,
-            |ui| {
-                if checkbox(
-                    ui,
-                    self.t("player_name"),
-                    &mut self.config.player.player_name,
-                ) {
-                    self.send_config();
-                }
+        section(ui, self.t("information"), None, |ui| {
+            if checkbox(
+                ui,
+                self.t("player_name"),
+                &mut self.config.player.player_name,
+            ) {
+                self.send_config();
+            }
 
-                if checkbox(
-                    ui,
-                    self.t("weapon_icon"),
-                    &mut self.config.player.weapon_icon,
-                ) {
-                    self.send_config();
-                }
+            if checkbox(
+                ui,
+                self.t("weapon_icon"),
+                &mut self.config.player.weapon_icon,
+            ) {
+                self.send_config();
+            }
 
-                if checkbox(ui, self.t("tags"), &mut self.config.player.tags) {
-                    self.send_config();
-                }
-            },
-        );
+            if checkbox(ui, self.t("tags"), &mut self.config.player.tags) {
+                self.send_config();
+            }
+        });
 
-        section(
-            ui,
-            if self.config.language == Language::Russian {
-                "Жизненные показатели"
-            } else {
-                "Vitals"
-            },
-            None,
-            |ui| {
-                if checkbox(ui, self.t("health_bar"), &mut self.config.player.health_bar) {
-                    self.send_config();
-                }
+        section(ui, self.t("vitals"), None, |ui| {
+            if checkbox(ui, self.t("health_bar"), &mut self.config.player.health_bar) {
+                self.send_config();
+            }
 
-                if checkbox(ui, self.t("armor_bar"), &mut self.config.player.armor_bar) {
-                    self.send_config();
-                }
-            },
-        );
+            if checkbox(ui, self.t("armor_bar"), &mut self.config.player.armor_bar) {
+                self.send_config();
+            }
+        });
     }
 }
