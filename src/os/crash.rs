@@ -17,7 +17,7 @@ pub fn install_crash_handler() {
     }));
 }
 
-const TIMEOUT_DURATION: Duration = Duration::from_secs(2);
+pub const TIMEOUT_DURATION: Duration = Duration::from_secs(2);
 static SENT_REPORT: AtomicBool = AtomicBool::new(false);
 fn crash_handler(panic_info: &PanicHookInfo) {
     if SENT_REPORT.swap(true, Ordering::SeqCst) {

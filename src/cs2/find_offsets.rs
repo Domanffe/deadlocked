@@ -130,6 +130,8 @@ impl CS2 {
         offsets.controller.desired_fov = client.get("CBasePlayerController", "m_iDesiredFOV")?;
         offsets.controller.owner_entity = client.get("C_BaseEntity", "m_hOwnerEntity")?;
         offsets.controller.color = client.get("CCSPlayerController", "m_iCompTeammateColor")?;
+        offsets.controller.action_tracking_services =
+            client.get("CCSPlayerController", "m_pActionTrackingServices")?;
 
         offsets.pawn.health = client.get("C_BaseEntity", "m_iHealth")?;
         offsets.pawn.armor = client.get("C_CSPlayerPawn", "m_ArmorValue")?;
@@ -175,6 +177,15 @@ impl CS2 {
         offsets.inferno.fire_positions = client.get("C_Inferno", "m_firePositions")?;
 
         offsets.spotted_state.mask = client.get("EntitySpottedState_t", "m_bSpottedByMask")?;
+
+        offsets.action_tracking.round_kills = client.get(
+            "CCSPlayerController_ActionTrackingServices",
+            "m_iNumRoundKills",
+        )?;
+        offsets.action_tracking.round_damage = client.get(
+            "CCSPlayerController_ActionTrackingServices",
+            "m_flTotalRoundDamageDealt",
+        )?;
 
         offsets.camera_services.fov = client.get("CCSPlayerBase_CameraServices", "m_iFOV")?;
 

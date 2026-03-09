@@ -11,7 +11,10 @@ use crate::{
         entity::{
             Entity, EntityInfo, GrenadeInfo, planted_c4::PlantedC4, player::Player, weapon::Weapon,
         },
-        features::{aimbot::Aimbot, esp_toggle::EspToggle, rcs::Recoil, triggerbot::Triggerbot},
+        features::{
+            aimbot::Aimbot, esp_toggle::EspToggle, leaderboard::LeaderboardData, rcs::Recoil,
+            triggerbot::Triggerbot,
+        },
         input::Input,
         offsets::Offsets,
         target::Target,
@@ -53,6 +56,7 @@ pub struct CS2 {
     planted_c4: Option<PlantedC4>,
     grenades: Arc<Mutex<GrenadeList>>,
     target_grenade: Option<Grenade>,
+    leaderboard_data: LeaderboardData,
 }
 
 impl Game for CS2 {
@@ -121,6 +125,8 @@ impl Game for CS2 {
         self.find_target(config);
 
         self.aimbot(config, mouse);
+
+        self.leaderboard();
     }
 
     fn data(&self, config: &Config, data: &mut Data) {
@@ -330,6 +336,7 @@ impl CS2 {
             planted_c4: None,
             grenades,
             target_grenade: None,
+            leaderboard_data: LeaderboardData::default(),
         }
     }
 
@@ -464,5 +471,9 @@ impl CS2 {
         } else {
             mouse.space_release();
         }
+    }
+
+    fn is_player_match(&self) -> bool {
+        self.players.iter().all(|p| p.steam_id(self) != 0)
     }
 }

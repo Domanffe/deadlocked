@@ -34,12 +34,19 @@ pub struct ConvarOffsets {
 
 #[derive(Debug, Default)]
 pub struct PlayerControllerOffsets {
-    pub steam_id: u64,     // u64 (m_steamID)
-    pub name: u64,         // Pointer -> String (m_iszPlayerName)
-    pub pawn: u64,         // Handle -> Pawn (m_hPawn)
-    pub desired_fov: u64,  // u32 (m_iDesiredFOV)
-    pub owner_entity: u64, // i32 (h_pOwnerEntity)
-    pub color: u64,        // i32 (m_iCompTeammateColor)
+    pub steam_id: u64,                 // u64 (m_steamID)
+    pub name: u64,                     // Pointer -> String (m_iszPlayerName)
+    pub pawn: u64,                     // Handle -> Pawn (m_hPawn)
+    pub desired_fov: u64,              // u32 (m_iDesiredFOV)
+    pub owner_entity: u64,             // i32 (h_pOwnerEntity)
+    pub color: u64,                    // i32 (m_iCompTeammateColor)
+    pub action_tracking_services: u64, // Pointer -> ActionTrackingServices (m_pActionTrackingServices)
+}
+
+#[derive(Debug, Default)]
+pub struct ActionTrackingOffsets {
+    pub round_kills: u64,  // i32 (m_iNumRoundKills)
+    pub round_damage: u64, // f32 (m_flTotalRoundDamageDealt)
 }
 
 #[derive(Debug, Default)]
@@ -155,6 +162,7 @@ pub struct Offsets {
     pub direct: DirectOffsets,
     pub convar: ConvarOffsets,
     pub controller: PlayerControllerOffsets,
+    pub action_tracking: ActionTrackingOffsets,
     pub pawn: PawnOffsets,
     pub game_scene_node: GameSceneNodeOffsets,
     pub skeleton: SkeletonInstanceOffsets,
