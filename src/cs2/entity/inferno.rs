@@ -35,7 +35,7 @@ impl Inferno {
         let mut position = Vec3::ZERO;
         let mut count = 0;
 
-        for i in 0..fire_count as usize {
+        for i in 0..(fire_count as usize).min(64) {
             if is_burning[i] == 0 {
                 continue;
             }
