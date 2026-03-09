@@ -126,15 +126,24 @@ impl Radar {
         let message = tungstenite::Message::text(
             serde_json::json!({"kind":"connect_server","uuid":self.uuid}).to_string(),
         );
-        websocket.send(message).unwrap();
+        if websocket.send(message).is_err() {
+            return false;
+        }
 
         loop {
             if websocket.can_read() {
-                let reply = websocket.read().unwrap();
-                let json: ConnectionAccept =
-                    serde_json::from_str(reply.into_text().unwrap().as_str()).unwrap();
+                let Ok(reply) = websocket.read() else {
+                    return false;
+                };
+                let Ok(text) = reply.into_text() else {
+                    return false;
+                };
+                let Ok(json) = serde_json::from_str::<ConnectionAccept>(text.as_str()) else {
+                    return false;
+                };
                 if json.kind != "accept" {
                     log::warn!("invalid first radar message: {}", json.kind);
+                    return false;
                 }
                 break;
             }
