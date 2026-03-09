@@ -120,8 +120,6 @@ impl Trans {
                 "gunshot" => "Gunshot",
                 "information" => "Information",
                 "vitals" => "Vitals",
-                "leaderboard" => "Leaderboard (Kill-log)",
-                "leaderboard_desc" => "Send kill statistics to the project server",
                 "file" => "File",
                 "grenade_trails" => "Grenade Trails",
                 "smoke" => "Smoke",
@@ -144,7 +142,11 @@ impl Trans {
                 "server_url" => "Server URL",
                 "open_browser" => "Open in Browser",
                 "copy_link" => "Copy Share Link",
-                "radar_desc" => "The web radar allows you to see the map and players on any device via a browser.",
+                "radar_desc" => {
+                    "The in-game overlay radar allows you to see the map and players directly on your screen."
+                }
+                "position_x" => "Position X",
+                "position_y" => "Position Y",
                 "smokes" => "Smokes",
                 "custom_smoke_color" => "Custom Smoke Color",
                 "smoke_color" => "Smoke Color",
@@ -271,8 +273,6 @@ impl Trans {
                 "gunshot" => "Выстрелы",
                 "information" => "Информация",
                 "vitals" => "Жизненные показатели",
-                "leaderboard" => "Таблица лидеров (Kill-log)",
-                "leaderboard_desc" => "Отправлять статистику убийств на сервер проекта",
                 "file" => "Файл",
                 "grenade_trails" => "Траектории гранат",
                 "smoke" => "Дым",
@@ -295,7 +295,11 @@ impl Trans {
                 "server_url" => "URL сервера",
                 "open_browser" => "Открыть в браузере",
                 "copy_link" => "Копировать ссылку",
-                "radar_desc" => "Веб-радар позволяет видеть карту и игроков на любом устройстве через браузер.",
+                "radar_desc" => {
+                    "Внутриигровой радар позволяет видеть карту и игроков прямо на вашем экране."
+                }
+                "position_x" => "Позиция X",
+                "position_y" => "Позиция Y",
                 "smokes" => "Дымовые гранаты",
                 "custom_smoke_color" => "Свой цвет дыма",
                 "smoke_color" => "Цвет дыма",

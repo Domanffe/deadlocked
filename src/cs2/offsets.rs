@@ -44,12 +44,6 @@ pub struct PlayerControllerOffsets {
 }
 
 #[derive(Debug, Default)]
-pub struct ActionTrackingOffsets {
-    pub round_kills: u64,  // i32 (m_iNumRoundKills)
-    pub round_damage: u64, // f32 (m_flTotalRoundDamageDealt)
-}
-
-#[derive(Debug, Default)]
 pub struct PawnOffsets {
     pub health: u64,              // i32 (m_iHealth)
     pub armor: u64,               // i32 (m_ArmorValue)
@@ -113,6 +107,12 @@ pub struct SpottedStateOffsets {
 }
 
 #[derive(Debug, Default)]
+pub struct ActionTrackingServicesOffsets {
+    pub round_kills: u64,  // i32 (m_iNumRoundKills)
+    pub round_damage: u64, // f32 (m_flTotalRoundDamageDealt)
+}
+
+#[derive(Debug, Default)]
 pub struct CameraServicesOffsets {
     pub fov: u64, // u32 (m_iFOV)
 }
@@ -162,7 +162,6 @@ pub struct Offsets {
     pub direct: DirectOffsets,
     pub convar: ConvarOffsets,
     pub controller: PlayerControllerOffsets,
-    pub action_tracking: ActionTrackingOffsets,
     pub pawn: PawnOffsets,
     pub game_scene_node: GameSceneNodeOffsets,
     pub skeleton: SkeletonInstanceOffsets,
@@ -170,6 +169,7 @@ pub struct Offsets {
     pub molotov: MolotovOffsets,
     pub inferno: InfernoOffsets,
     pub spotted_state: SpottedStateOffsets,
+    pub action_tracking: ActionTrackingServicesOffsets,
     pub camera_services: CameraServicesOffsets,
     pub item_services: ItemServicesOffsets,
     pub weapon_services: WeaponServicesOffsets,

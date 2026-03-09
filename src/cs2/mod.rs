@@ -8,18 +8,13 @@ use crate::{
     constants::cs2::{self, TEAM_CT, TEAM_T},
     cs2::{
         bones::Bones,
-        entity::{
-            Entity, EntityInfo, GrenadeInfo, planted_c4::PlantedC4, player::Player, weapon::Weapon,
-        },
-        features::{
-            aimbot::Aimbot, esp_toggle::EspToggle, leaderboard::LeaderboardData, rcs::Recoil,
-            triggerbot::Triggerbot,
-        },
+        entity::{Entity, planted_c4::PlantedC4, player::Player, weapon::Weapon},
+        features::{aimbot::Aimbot, esp_toggle::EspToggle, rcs::Recoil, triggerbot::Triggerbot},
         input::Input,
         offsets::Offsets,
         target::Target,
     },
-    data::{Data, PlayerData},
+    data::{Data, EntityInfo, GrenadeInfo, PlayerData},
     game::Game,
     math::{angles_from_vector, vec2_clamp},
     os::{mouse::Mouse, process::Process},
@@ -56,7 +51,6 @@ pub struct CS2 {
     planted_c4: Option<PlantedC4>,
     grenades: Arc<Mutex<GrenadeList>>,
     target_grenade: Option<Grenade>,
-    leaderboard_data: LeaderboardData,
 }
 
 impl Game for CS2 {
@@ -125,8 +119,6 @@ impl Game for CS2 {
         self.find_target(config);
 
         self.aimbot(config, mouse);
-
-        self.leaderboard(config);
     }
 
     fn data(&self, config: &Config, data: &mut Data) {
@@ -336,7 +328,6 @@ impl CS2 {
             planted_c4: None,
             grenades,
             target_grenade: None,
-            leaderboard_data: LeaderboardData::default(),
         }
     }
 
@@ -471,9 +462,5 @@ impl CS2 {
         } else {
             mouse.space_release();
         }
-    }
-
-    fn is_player_match(&self) -> bool {
-        self.players.iter().all(|p| p.steam_id(self) != 0)
     }
 }

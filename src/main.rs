@@ -22,7 +22,6 @@ mod math;
 mod message;
 mod os;
 mod parser;
-mod radar;
 mod router;
 mod ui;
 
@@ -59,25 +58,18 @@ fn main() {
     let (tx, rx) = unbounded();
     let (tx_gui, rx_gui) = bounded(16);
     let (tx_game, rx_game) = bounded(16);
-    let (tx_radar, rx_radar) = bounded(16);
     let data = Arc::new(Mutex::new(Data::default()));
     let data_game = data.clone();
-    let data_radar = data.clone();
     let grenades = Arc::new(Mutex::new(read_grenades()));
     let grenades_game = grenades.clone();
 
     spawn_with_crash_handler(move || {
-        router::router(rx, tx_gui, tx_game, tx_radar);
+        router::router(rx, tx_gui, tx_game);
     });
 
     let tx_game = tx.clone();
     spawn_with_crash_handler(move || {
         game::GameManager::new(tx_game, rx_game, data_game, grenades_game).run();
-    });
-
-    let tx_radar = tx.clone();
-    spawn_with_crash_handler(move || {
-        radar::Radar::new(tx_radar, rx_radar, data_radar).run();
     });
 
     let event_loop = match winit::event_loop::EventLoop::new() {

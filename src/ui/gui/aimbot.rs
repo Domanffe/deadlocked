@@ -2,7 +2,6 @@ use egui::{DragValue, Ui};
 use strum::IntoEnumIterator as _;
 
 use crate::{
-    config::Language,
     cs2::bones::Bones,
     ui::{
         app::App,
@@ -279,28 +278,13 @@ impl App {
             }
 
             ui.horizontal(|ui| {
-                let mut start = *self.weapon_config().triggerbot.delay.start();
-                let mut end = *self.weapon_config().triggerbot.delay.end();
-                let res = ui.add(
-                    DragValue::new(&mut start)
-                        .prefix(if self.config.language == Language::Russian {
-                            "Мин: "
-                        } else {
-                            "Min: "
-                        })
-                        .range(0..=1000),
-                );
-                ui.add(
-                    DragValue::new(&mut end)
-                        .prefix(if self.config.language == Language::Russian {
-                            "Макс: "
-                        } else {
-                            "Max: "
-                        })
-                        .range(0..=1000),
-                );
-                if res.changed() || start > end {
-                    self.weapon_config().triggerbot.delay = start..=end;
+                if ui
+                    .add(crate::ui::drag_range::DragRange::new(
+                        &mut self.weapon_config().triggerbot.delay,
+                        0..=1000,
+                    ))
+                    .changed()
+                {
                     self.send_config();
                 }
                 let delay_text = self.t("delay");

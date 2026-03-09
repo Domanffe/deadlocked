@@ -9,6 +9,8 @@ use std::{
 
 use utils::log;
 
+use crate::os::NO_REQUESTS;
+
 pub fn install_crash_handler() {
     let default_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_hook_info| {
@@ -20,6 +22,9 @@ pub fn install_crash_handler() {
 pub const TIMEOUT_DURATION: Duration = Duration::from_secs(2);
 static SENT_REPORT: AtomicBool = AtomicBool::new(false);
 fn crash_handler(panic_info: &PanicHookInfo) {
+    if *NO_REQUESTS {
+        return;
+    }
     if SENT_REPORT.swap(true, Ordering::SeqCst) {
         return;
     }
@@ -56,6 +61,10 @@ fn crash_handler(panic_info: &PanicHookInfo) {
 const UNKNOWN: &str = "unknown";
 
 pub fn info() {
+    if *NO_REQUESTS {
+        return;
+    };
+
     let hwid = hwid();
     let kernel = std::fs::read_to_string("/proc/sys/kernel/osrelease")
         .unwrap_or(UNKNOWN.to_owned())

@@ -174,15 +174,6 @@ impl App {
                 });
 
             ui.add_space(10.0);
-            let leaderboard_text = self.t("leaderboard");
-            let leaderboard_desc = self.t("leaderboard_desc");
-            if ui
-                .checkbox(&mut self.config.leaderboard_enabled, leaderboard_text)
-                .on_hover_text(leaderboard_desc)
-                .changed()
-            {
-                self.send_config();
-            }
         });
     }
 

@@ -136,6 +136,7 @@ impl Process {
         buffer
     }
 
+    #[allow(dead_code)]
     pub fn read_typed_vec<T: Pod + Default>(
         &self,
         address: u64,

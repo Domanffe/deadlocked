@@ -1,7 +1,8 @@
 pub mod app;
 pub mod color;
+pub mod drag_range;
 pub mod grenades;
-mod gui;
-mod overlay;
-mod trail;
-mod window_context;
+pub mod gui;
+pub mod overlay;
+pub mod trail;
+pub mod window_context;

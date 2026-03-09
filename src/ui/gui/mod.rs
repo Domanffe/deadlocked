@@ -205,10 +205,11 @@ impl App {
         }
     }
 
-    pub fn render(&mut self) {
+    pub fn render_gui(&mut self) {
         let self_ptr = self as *mut Self;
-
-        let gui = self.gui.as_mut().unwrap();
+        let Some(gui) = self.gui.as_mut() else {
+            return;
+        };
 
         if let Err(err) = gui.make_current() {
             log::error!("could not make gui window current: {err}");
@@ -220,10 +221,14 @@ impl App {
 
         if let Err(err) = gui.swap_buffers() {
             log::error!("could not swap gui window buffers: {err}");
-            return;
         }
+    }
 
-        let overlay = self.overlay.as_mut().unwrap();
+    pub fn render_overlay(&mut self) {
+        let self_ptr = self as *mut Self;
+        let Some(overlay) = self.overlay.as_mut() else {
+            return;
+        };
 
         overlay.window().set_cursor_hittest(false).unwrap();
         if let Err(err) = overlay.make_current() {

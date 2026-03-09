@@ -1,17 +1,10 @@
-use glam::Vec3;
-use serde::Serialize;
-
 use crate::{
     constants::cs2::class,
     cs2::{
         CS2,
         entity::{
-            inferno::{Inferno, InfernoInfo},
-            molotov::{Molotov, MolotovInfo},
-            planted_c4::PlantedC4,
-            player::Player,
-            smoke::{Smoke, SmokeInfo},
-            weapon::Weapon,
+            inferno::Inferno, molotov::Molotov, planted_c4::PlantedC4, player::Player,
+            smoke::Smoke, weapon::Weapon,
         },
     },
 };
@@ -33,34 +26,6 @@ pub enum Entity {
     Flashbang(u64),
     HeGrenade(u64),
     Decoy(u64),
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub enum EntityInfo {
-    Weapon { weapon: Weapon, position: Vec3 },
-    Inferno(InfernoInfo),
-    Smoke(SmokeInfo),
-    Molotov(MolotovInfo),
-    Flashbang(GrenadeInfo),
-    HeGrenade(GrenadeInfo),
-    Decoy(GrenadeInfo),
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct GrenadeInfo {
-    pub entity: u64,
-    pub position: Vec3,
-    pub name: &'static str,
-}
-
-impl GrenadeInfo {
-    pub fn new(entity: u64, name: &'static str, cs2: &CS2) -> Self {
-        Self {
-            entity,
-            position: Player::entity(entity).position(cs2),
-            name,
-        }
-    }
 }
 
 impl CS2 {
@@ -179,14 +144,6 @@ impl CS2 {
                     }
                 }
             }
-
-            // m_designerName
-            /*let name_pointer: u64 =
-                *bytemuck::from_bytes(&bucket[identity_offset + 0x20..identity_offset + 0x28]);
-            let Some(entity) = self.entity_type(entity, name_pointer) else {
-                continue;
-            };
-            self.entities.push(entity);*/
         }
     }
 }

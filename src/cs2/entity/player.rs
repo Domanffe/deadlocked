@@ -391,36 +391,6 @@ impl Player {
         weapons.contains(&Weapon::C4)
     }
 
-    fn action_tracking_services(&self, cs2: &CS2) -> u64 {
-        cs2.process
-            .read(self.controller + cs2.offsets.controller.action_tracking_services)
-    }
-
-    pub fn round_kills(&self, cs2: &CS2) -> Option<i32> {
-        let action_tracking_services = self.action_tracking_services(cs2);
-        if action_tracking_services == 0 {
-            return None;
-        }
-
-        Some(
-            cs2.process
-                .read(action_tracking_services + cs2.offsets.action_tracking.round_kills),
-        )
-    }
-
-    #[allow(dead_code)]
-    pub fn round_damage(&self, cs2: &CS2) -> Option<f32> {
-        let action_tracking_services = self.action_tracking_services(cs2);
-        if action_tracking_services == 0 {
-            return None;
-        }
-
-        Some(
-            cs2.process
-                .read(action_tracking_services + cs2.offsets.action_tracking.round_damage),
-        )
-    }
-
     pub fn visible(&self, cs2: &CS2, local_player: &Player) -> bool {
         let eye_pos = local_player.eye_position(cs2);
         const CHECKED_BONES: [Bones; 8] = [

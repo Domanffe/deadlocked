@@ -39,7 +39,11 @@ impl App {
                     }
 
                     let right = &mut cols[1];
-                    if color_picker(right, molotov_text, &mut self.config.hud.molotov_trail_color) {
+                    if color_picker(
+                        right,
+                        molotov_text,
+                        &mut self.config.hud.molotov_trail_color,
+                    ) {
                         self.send_config();
                     }
                     if color_picker(
@@ -62,11 +66,18 @@ impl App {
 
             section(ui, hud_colors_text, None, |ui| {
                 ui.columns(2, |cols| {
-                    if color_picker(&mut cols[0], text_color_text, &mut self.config.hud.text_color) {
+                    if color_picker(
+                        &mut cols[0],
+                        text_color_text,
+                        &mut self.config.hud.text_color,
+                    ) {
                         self.send_config();
                     }
-                    if color_picker(&mut cols[1], crosshair_text, &mut self.config.hud.crosshair_color)
-                    {
+                    if color_picker(
+                        &mut cols[1],
+                        crosshair_text,
+                        &mut self.config.hud.crosshair_color,
+                    ) {
                         self.send_config();
                     }
                 });
@@ -99,7 +110,11 @@ impl App {
             if checkbox(ui, fov_circle_text, &mut self.config.hud.fov_circle) {
                 self.send_config();
             }
-            if checkbox(ui, sniper_crosshair_text, &mut self.config.hud.sniper_crosshair) {
+            if checkbox(
+                ui,
+                sniper_crosshair_text,
+                &mut self.config.hud.sniper_crosshair,
+            ) {
                 self.send_config();
             }
         });
@@ -132,7 +147,11 @@ impl App {
                 self.send_config();
             }
             if self.config.hud.hitmarker
-                && color_picker(ui, hitmarker_color_text, &mut self.config.hud.hitmarker_color)
+                && color_picker(
+                    ui,
+                    hitmarker_color_text,
+                    &mut self.config.hud.hitmarker_color,
+                )
             {
                 self.send_config();
             }
@@ -153,7 +172,11 @@ impl App {
         let dropped_weapons_text = self.t("dropped_weapons");
 
         section(ui, world_esp_text, None, |ui| {
-            if checkbox(ui, dropped_weapons_text, &mut self.config.hud.dropped_weapons) {
+            if checkbox(
+                ui,
+                dropped_weapons_text,
+                &mut self.config.hud.dropped_weapons,
+            ) {
                 self.send_config();
             }
         });

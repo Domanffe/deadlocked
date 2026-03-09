@@ -43,14 +43,8 @@ impl CS2 {
         if self.target.player.is_none() && self.target_grenade.is_none() {
             return;
         }
-        // Hitchance logic
-        if config.hitchance < 100.0 {
-            use rand::RngExt;
-            let mut rng = rand::rng();
-            if rng.random_range(0.0..100.0) > config.hitchance {
-                return;
-            }
-        }
+
+        let target = self.target.player.as_ref();
 
         let Some(local_player) = Player::local_player(self) else {
             return;
@@ -60,14 +54,7 @@ impl CS2 {
             return;
         }
 
-        if let Some(target_player) = self.target.player.as_ref() {
-            if !grenade && config.visibility_check && !target_player.visible(self, &local_player) {
-                return;
-            }
-            if !grenade && !target_player.is_valid(self) {
-                return;
-            }
-        } else if !grenade {
+        if !grenade && config.visibility_check && !target.unwrap().visible(self, &local_player) {
             return;
         }
 
@@ -75,105 +62,28 @@ impl CS2 {
             let mut smallest_fov = 360.0;
             let mut smallest_angle = glam::Vec2::ZERO;
             if grenade {
-                if let Some(target_grenade) = self.target_grenade.as_ref() {
-                    let angle = target_grenade.view_angles;
+                let angle = self.target_grenade.as_ref().unwrap().view_angles;
+                let fov = angles_to_fov(&local_player.view_angles(self), &angle);
+                if fov < smallest_fov {
+                    smallest_angle = angle;
+                }
+            } else {
+                for bone in &config.bones {
+                    let bone_pos = target.unwrap().bone_position(self, bone.u64());
+                    let angle = self.angle_to_target(
+                        &local_player,
+                        &bone_pos,
+                        &self.target.previous_aim_punch,
+                    );
                     let fov = angles_to_fov(&local_player.view_angles(self), &angle);
                     if fov < smallest_fov {
+                        smallest_fov = fov;
                         smallest_angle = angle;
-                    }
-                }
-            } else if let Some(target_player) = self.target.player.as_ref() {
-                let velocity = if config.prediction {
-                    target_player.velocity(self)
-                } else {
-                    glam::Vec3::ZERO
-                };
-
-                for bone in &config.bones {
-                    let center_pos = target_player.bone_position(self, bone.u64());
-                    let mut points_to_check = vec![center_pos];
-
-                    if config.multipoint {
-                        let scale = config.multipoint_scale * 3.0; // Scale by approximate hitbox size
-                        points_to_check.push(center_pos + glam::vec3(scale, 0.0, 0.0));
-                        points_to_check.push(center_pos + glam::vec3(-scale, 0.0, 0.0));
-                        points_to_check.push(center_pos + glam::vec3(0.0, scale, 0.0));
-                        points_to_check.push(center_pos + glam::vec3(0.0, -scale, 0.0));
-                    }
-
-                    for mut bone_pos in points_to_check {
-                        if config.visibility_check {
-                            let eye_pos = local_player.eye_position(self);
-
-                            if let Some(bvh) = &self.bvh
-                                && !bvh.has_line_of_sight(eye_pos, bone_pos)
-                            {
-                                if config.backtrack {
-                                    let history_cell = self.target.backtrack_history.borrow();
-                                    if let Some(history) =
-                                        history_cell.get(&target_player.steam_id(self))
-                                    {
-                                        let mut found_visible_backtrack = false;
-                                        for record in history.iter().rev() {
-                                            if let Some(back_pos) = record.bones.get(bone)
-                                                && bvh.has_line_of_sight(eye_pos, *back_pos)
-                                            {
-                                                bone_pos = *back_pos;
-                                                found_visible_backtrack = true;
-                                                break;
-                                            }
-                                        }
-                                        if !found_visible_backtrack {
-                                            continue;
-                                        }
-                                    } else {
-                                        continue;
-                                    }
-                                } else {
-                                    continue;
-                                }
-                            }
-
-                            // Volumetric smoke check
-                            if self.is_line_blocked_by_smoke(eye_pos, bone_pos) {
-                                continue;
-                            }
-
-                            // Game spotted mask (as extra fallback for other dynamic blockers)
-                            let spotted_mask = target_player.spotted_mask(self);
-                            if (spotted_mask & (1 << self.target.local_pawn_index)) == 0 {
-                                continue;
-                            }
-                        }
-
-                        if config.prediction {
-                            bone_pos += velocity * config.prediction_factor * 0.01;
-                        }
-
-                        let angle = self.angle_to_target(
-                            &local_player,
-                            &bone_pos,
-                            &self.target.previous_aim_punch,
-                        );
-                        let fov = angles_to_fov(&local_player.view_angles(self), &angle);
-                        if fov < smallest_fov {
-                            smallest_fov = fov;
-                            smallest_angle = angle;
-                        }
-
-                        // If we found a visible point on this bone, no need to check other points of the same bone
-                        if config.multipoint {
-                            break;
-                        }
                     }
                 }
             }
             smallest_angle
         };
-
-        if target_angle == glam::Vec2::ZERO {
-            return;
-        }
 
         let view_angles = local_player.view_angles(self);
         if angles_to_fov(&view_angles, &target_angle)
@@ -184,6 +94,10 @@ impl CS2 {
                     1.0
                 })
         {
+            return;
+        }
+
+        if !grenade && !target.unwrap().is_valid(self) {
             return;
         }
 
@@ -199,17 +113,21 @@ impl CS2 {
 
         let sensitivity = self.get_sensitivity() * local_player.fov_multiplier(self);
 
-        let smooth = if grenade { 1.0 } else { config.smooth + 1.0 }.clamp(1.0, 20.0);
         let mouse_angles = vec2(
             aim_angles.y / sensitivity * 50.0,
             -aim_angles.x / sensitivity * 50.0,
-        ) / smooth;
+        ) / (if grenade { 1.0 } else { config.smooth + 1.0 }).clamp(1.0, 20.0);
 
         log::debug!(
             "aimbot mouse movement: {:.2}/{:.2}",
             mouse_angles.x,
             mouse_angles.y
         );
-        mouse.move_rel_humanized(&mouse_angles, smooth, config.advanced_humanizer);
+
+        if config.advanced_humanizer {
+            mouse.move_rel_humanized(&mouse_angles, config.smooth, true);
+        } else {
+            mouse.move_rel(&mouse_angles);
+        }
     }
 }

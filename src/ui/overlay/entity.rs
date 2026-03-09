@@ -1,12 +1,10 @@
 use std::time::Instant;
 
-use egui::{Align2, Color32, FontId, Painter, Pos2, Stroke};
+use egui::{Align2, Color32, FontId, Painter, Stroke};
 
 use crate::{
-    cs2::entity::{
-        EntityInfo, GrenadeInfo, inferno::InfernoInfo, molotov::MolotovInfo, smoke::SmokeInfo,
-    },
-    data::Data,
+    cs2::entity::{inferno::InfernoInfo, molotov::MolotovInfo, smoke::SmokeInfo},
+    data::{Data, EntityInfo, GrenadeInfo},
     math::world_to_screen,
     ui::{app::App, overlay::convex_hull, trail::Trail},
 };
@@ -59,18 +57,12 @@ impl App {
         };
         self.text(painter, info.name, position, Align2::CENTER_CENTER, None);
 
-        if !self.config.hud.grenade_trails {
-            return;
-        }
-
         let stroke = Stroke::new(self.config.hud.line_width, trail_color);
         let Some(trail) = self.trails.get(&info.entity) else {
             return;
         };
         for window in trail.trail.windows(2) {
             if let [v1, v2] = window {
-                use crate::math::world_to_screen;
-
                 let Some(v1) = world_to_screen(v1, data) else {
                     continue;
                 };
@@ -88,11 +80,9 @@ impl App {
         if !self.config.hud.grenade_trails {
             return;
         }
-        let hull: Vec<Pos2> = convex_hull(&inferno.hull)
+        let hull: Vec<egui::Pos2> = convex_hull(&inferno.hull)
             .iter()
             .filter_map(|p| {
-                use crate::math::world_to_screen;
-
                 let p = p + (p - inferno.position).clamp_length(60.0, 60.0);
                 world_to_screen(&p, data)
             })
@@ -147,24 +137,24 @@ impl App {
     pub fn update_trails(&mut self) {
         let data = self.data.lock();
         for entity in &data.entities {
-            let (entity, position) = match entity {
+            let (entity_id, position) = match entity {
                 EntityInfo::Inferno(info) => (info.entity, info.position),
                 EntityInfo::Smoke(info) => (info.entity, info.position),
                 EntityInfo::Molotov(info) => (info.entity, info.position),
-                EntityInfo::Flashbang(info) | EntityInfo::HeGrenade(info) => {
-                    (info.entity, info.position)
-                }
+                EntityInfo::Flashbang(info)
+                | EntityInfo::HeGrenade(info)
+                | EntityInfo::Decoy(info) => (info.entity, info.position),
                 _ => continue,
             };
-            if let Some(trail) = self.trails.get_mut(&entity) {
-                if (position - trail.trail.last().unwrap()).length() < 1.0 {
+            if let Some(trail) = self.trails.get_mut(&entity_id) {
+                if (position - *trail.trail.last().unwrap()).length() < 1.0 {
                     continue;
                 }
                 trail.trail.push(position);
                 trail.last_update = Instant::now();
             } else {
                 self.trails.insert(
-                    entity,
+                    entity_id,
                     Trail {
                         trail: vec![position],
                         last_update: Instant::now(),

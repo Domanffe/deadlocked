@@ -27,7 +27,9 @@ pub struct Target {
 
 impl Target {
     pub fn reset(&mut self) {
+        let history = std::mem::take(&mut *self.backtrack_history.borrow_mut());
         *self = Target::default();
+        *self.backtrack_history.borrow_mut() = history;
     }
 }
 
@@ -155,13 +157,12 @@ impl CS2 {
             }
         }
 
-        if self.target.player.is_none() {
+        let Some(target) = &self.target.player else {
             return;
-        }
+        };
 
         // update target angle
         let mut smallest_fov = 360.0;
-        let target = self.target.player.as_ref().unwrap();
         for bone in Bones::iter() {
             let bone_position = target.bone_position(self, bone.u64());
             let distance = eye_position.distance(bone_position);
@@ -176,14 +177,5 @@ impl CS2 {
                 self.target.bone_index = bone.u64();
             }
         }
-        /*
-        let head_position = self.get_bone_position(process, self.target.pawn, Bones::Head.u64());
-        let distance = eye_position.distance(head_position);
-        let angle = self.get_target_angle(process, local_pawn, head_position, aim_punch);
-
-        self.target.angle = angle;
-        self.target.distance = distance;
-        self.target.bone_index = Bones::Head.u64();
-        */
     }
 }

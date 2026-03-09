@@ -5,7 +5,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arboard::Clipboard;
 use crossbeam::channel::{Receiver, Sender};
 use utils::{log, sync::Mutex};
 use winit::{
@@ -19,7 +18,7 @@ use crate::{
     },
     cs2::entity::weapon::Weapon,
     data::{Data, SoundType},
-    message::{Envelope, GameStatus, Message, RadarStatus, Target},
+    message::{Envelope, GameStatus, Message},
     ui::{
         grenades::{Grenade, GrenadeList},
         gui::{Tab, aimbot::AimbotTab},
@@ -28,13 +27,12 @@ use crate::{
     },
 };
 
-const FRAME_RATE: u64 = 120;
+const FRAME_RATE: u64 = 60;
 const FRAME_DURATION: Duration = Duration::from_micros(1_000_000 / FRAME_RATE);
 
 pub struct App {
     pub gui: Option<WindowContext>,
     pub overlay: Option<WindowContext>,
-    pub clipboard: Clipboard,
     next_frame_time: Instant,
 
     pub tx: Sender<Envelope>,
@@ -42,7 +40,6 @@ pub struct App {
     pub data: Arc<Mutex<Data>>,
 
     pub game_status: GameStatus,
-    pub radar_status: RadarStatus,
     pub display_scale: f32,
     pub trails: HashMap<u64, Trail>,
     pub player_sounds: HashMap<u64, (Instant, SoundType)>,
@@ -78,7 +75,6 @@ impl App {
             gui: None,
             overlay: None,
 
-            clipboard: Clipboard::new().unwrap(),
             next_frame_time: Instant::now() + FRAME_DURATION,
 
             tx,
@@ -90,7 +86,6 @@ impl App {
             new_config_name: String::new(),
 
             game_status: GameStatus::NotStarted,
-            radar_status: RadarStatus::Disconnected,
             display_scale: 1.0,
             trails: HashMap::new(),
             player_sounds: HashMap::new(),
@@ -105,19 +100,7 @@ impl App {
             aimbot_weapon: Weapon::Ak47,
         };
         ret.send_config();
-        ret.send_radar_config();
         ret
-    }
-
-    fn send_radar_config(&self) {
-        self.send_message(
-            Message::RadarSetEnabled(self.config.radar.enabled),
-            Target::Radar,
-        );
-        self.send_message(
-            Message::ChangeRadarUrl(self.config.radar.url.clone()),
-            Target::Radar,
-        );
     }
 
     fn create_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -161,10 +144,8 @@ impl ApplicationHandler for App {
         window_event: WindowEvent,
     ) {
         while let Ok(message) = self.rx.try_recv() {
-            match message {
-                Message::GameStatus(status) => self.game_status = status,
-                Message::RadarStatus(status) => self.radar_status = status,
-                _ => {}
+            if let Message::GameStatus(status) = message {
+                self.game_status = status;
             }
         }
 
@@ -191,12 +172,17 @@ impl ApplicationHandler for App {
             WindowEvent::KeyboardInput {
                 event: key_event, ..
             } => {
-                use winit::keyboard::{Key, NamedKey};
+                use winit::{event::ElementState, keyboard::Key};
                 match key_event.logical_key {
-                    Key::Named(NamedKey::Control)
-                    | Key::Named(NamedKey::Shift)
-                    | Key::Named(NamedKey::Alt) => {
-                        self.gui.as_mut().unwrap().process_modifier();
+                    Key::Named(winit::keyboard::NamedKey::Control)
+                    | Key::Named(winit::keyboard::NamedKey::Shift)
+                    | Key::Named(winit::keyboard::NamedKey::Alt) => {
+                        let modifiers = self.gui.as_ref().unwrap().modifiers();
+                        self.gui.as_mut().unwrap().process_modifier(
+                            modifiers,
+                            key_event.state == ElementState::Pressed,
+                            key_event.repeat,
+                        );
                     }
                     _ => {}
                 }
@@ -204,23 +190,23 @@ impl ApplicationHandler for App {
                 let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
                 if event_response.repaint {
                     self.gui.as_ref().unwrap().request_redraw();
-                    self.overlay.as_ref().unwrap().request_redraw();
                 }
             }
             WindowEvent::RedrawRequested => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
                     self.next_frame_time,
                 ));
-                gui.request_redraw();
-                overlay.request_redraw();
-                self.render();
+                if window_id == gui.window().id() {
+                    self.render_gui();
+                } else if window_id == overlay.window().id() {
+                    self.render_overlay();
+                }
             }
             _ => {
                 let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
 
                 if event_response.repaint {
                     self.gui.as_ref().unwrap().request_redraw();
-                    self.overlay.as_ref().unwrap().request_redraw();
                 }
             }
         }

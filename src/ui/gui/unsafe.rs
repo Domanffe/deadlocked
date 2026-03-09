@@ -24,7 +24,11 @@ impl App {
 
             let mut no_smoke = self.config.misc.no_smoke;
             section(ui, smokes_text, Some(&mut no_smoke), |ui| {
-                if checkbox(ui, custom_smoke_color_text, &mut self.config.misc.change_smoke_color) {
+                if checkbox(
+                    ui,
+                    custom_smoke_color_text,
+                    &mut self.config.misc.change_smoke_color,
+                ) {
                     self.send_config();
                 }
 

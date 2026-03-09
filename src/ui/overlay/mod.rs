@@ -12,6 +12,7 @@ use crate::{
 mod entity;
 mod hud;
 mod player;
+pub mod radar;
 
 impl App {
     fn aimbot_config(&self, weapon: &Weapon) -> &AimbotConfig {
@@ -60,6 +61,7 @@ impl App {
         self.draw_keybind_list(&painter, data);
         self.draw_fov_circle(&painter, data);
         self.draw_sniper_crosshair(&painter, data);
+        self.draw_radar(&painter, data);
 
         if data.aimbot_active {
             self.text(

@@ -1,46 +1,14 @@
-use egui::{Color32, Rgba};
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use serde::Serialize;
 
-use crate::cs2::{CS2, entity::player::Player};
+use crate::{
+    cs2::{CS2, entity::player::Player},
+    data::GrenadeInfo,
+};
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy)]
 pub struct Smoke {
-    pub(crate) controller: u64,
-}
-
-impl Smoke {
-    pub fn new(controller: u64) -> Self {
-        Self { controller }
-    }
-
-    pub fn info(&self, cs2: &CS2) -> SmokeInfo {
-        SmokeInfo {
-            entity: self.controller,
-            position: Player::entity(self.controller).position(cs2),
-        }
-    }
-
-    pub fn disable(&self, cs2: &CS2) {
-        let disabled = cs2
-            .process
-            .read::<u8>(self.controller + cs2.offsets.smoke.did_smoke_effect)
-            != 0;
-        if !disabled {
-            cs2.process
-                .write(self.controller + cs2.offsets.smoke.did_smoke_effect, 1u8);
-        }
-    }
-
-    pub fn color(&self, cs2: &CS2, color: &Color32) {
-        let offset = self.controller + cs2.offsets.smoke.smoke_color;
-        let current_color: [f32; 3] = cs2.process.read(offset);
-        let color = Rgba::from(*color);
-        let wanted_color = [color.r() * 255.0, color.g() * 255.0, color.b() * 255.0];
-        if current_color != wanted_color {
-            cs2.process.write(offset, wanted_color);
-        }
-    }
+    pub controller: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,9 +17,49 @@ pub struct SmokeInfo {
     pub position: Vec3,
 }
 
+impl Smoke {
+    pub fn new(controller: u64) -> Self {
+        Self { controller }
+    }
+
+    pub fn color(&self, cs2: &CS2, color: &egui::Color32) {
+        let current_color: Vec3 = cs2
+            .process
+            .read(self.controller + cs2.offsets.smoke.smoke_color);
+        let new_color = Vec3::new(
+            color.r() as f32 / 255.0,
+            color.g() as f32 / 255.0,
+            color.b() as f32 / 255.0,
+        );
+        if current_color != new_color {
+            cs2.process
+                .write(self.controller + cs2.offsets.smoke.smoke_color, new_color);
+        }
+    }
+
+    pub fn disable(&self, cs2: &CS2) {
+        let current: Vec2 = cs2
+            .process
+            .read(self.controller + cs2.offsets.smoke.smoke_color);
+        if current != Vec2::ZERO {
+            cs2.process
+                .write(self.controller + cs2.offsets.smoke.smoke_color, Vec2::ZERO);
+        }
+    }
+
+    pub fn info(&self, cs2: &CS2) -> SmokeInfo {
+        let position = Player::entity(self.controller).position(cs2);
+
+        SmokeInfo {
+            entity: self.controller,
+            position,
+        }
+    }
+}
+
 impl SmokeInfo {
-    pub fn grenade(&self) -> super::GrenadeInfo {
-        super::GrenadeInfo {
+    pub fn grenade(&self) -> GrenadeInfo {
+        GrenadeInfo {
             entity: self.entity,
             position: self.position,
             name: "Smoke",

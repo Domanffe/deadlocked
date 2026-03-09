@@ -21,7 +21,6 @@ const REFRESH_RATE: u64 = 100;
 pub const LOOP_DURATION: Duration = Duration::from_millis(1000 / REFRESH_RATE);
 pub const SLEEP_DURATION: Duration = Duration::from_secs(5);
 pub const DEFAULT_CONFIG_NAME: &str = "deadlocked.toml";
-pub const DEFAULT_URL: &str = "localhost:6346";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, EnumIter)]
 pub enum Language {
@@ -46,7 +45,6 @@ pub struct Config {
     pub radar: RadarConfig,
     pub misc: UnsafeConfig,
     pub accent_color: Color32,
-    pub leaderboard_enabled: bool,
 }
 
 impl Default for Config {
@@ -59,7 +57,6 @@ impl Default for Config {
             radar: RadarConfig::default(),
             misc: UnsafeConfig::default(),
             accent_color: Colors::BLUE,
-            leaderboard_enabled: false,
         }
     }
 }
@@ -491,14 +488,18 @@ impl Default for HudConfig {
 #[serde(default)]
 pub struct RadarConfig {
     pub enabled: bool,
-    pub url: String,
+    pub scale: f32,
+    pub size: f32,
+    pub position: [f32; 2],
 }
 
 impl Default for RadarConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            url: DEFAULT_URL.to_string(),
+            scale: 1.0,
+            size: 250.0,
+            position: [50.0, 50.0],
         }
     }
 }

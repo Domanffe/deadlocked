@@ -1,99 +1,66 @@
-use egui::Ui;
-use utils::log;
-use uuid::Uuid;
+use egui::{DragValue, Ui};
 
-use crate::{
-    message::{Message, RadarStatus, Target},
-    ui::{
-        app::App,
-        color::Colors,
-        gui::helpers::{scroll, section},
-    },
+use crate::ui::{
+    app::App,
+    gui::helpers::{drag, scroll, section},
 };
 
 impl App {
-    fn radar_link(&self, uuid: &Uuid) -> String {
-        format!("http://{}/?uuid={}", self.config.radar.url, uuid)
-    }
-
     pub fn radar_settings(&mut self, ui: &mut Ui) {
         let mut enabled = self.config.radar.enabled;
         let radar_text = self.t("radar");
-        let status_label = self.t("status");
-        let server_url_label = self.t("server_url");
-        let open_browser_text = self.t("open_browser");
-        let copy_link_text = self.t("copy_link");
-        let radar_desc_text = self.t("radar_desc");
 
         scroll(ui, "radar_settings", |ui| {
             section(ui, radar_text, Some(&mut enabled), |ui| {
-                let (status_text, status_color) = match self.radar_status {
-                    RadarStatus::Connected(_) => (self.t("connected"), Colors::GREEN),
-                    RadarStatus::Disconnected => (self.t("disconnected"), Colors::YELLOW),
-                };
-
-                ui.horizontal(|ui| {
-                    ui.label(status_label);
-                    ui.label(
-                        egui::RichText::new(status_text)
-                            .color(status_color)
-                            .strong(),
-                    );
-                });
-
-                ui.add_space(4.0);
-                ui.label(server_url_label);
-                if ui
-                    .text_edit_singleline(&mut self.config.radar.url)
-                    .changed()
-                {
-                    self.send_message(
-                        Message::ChangeRadarUrl(self.config.radar.url.clone()),
-                        Target::Radar,
-                    );
-                    self.save();
+                let scale_text = self.t("size"); // Or use a separate key if we want
+                if drag(
+                    ui,
+                    scale_text,
+                    DragValue::new(&mut self.config.radar.size)
+                        .range(50.0..=500.0)
+                        .speed(1.0),
+                ) {
+                    self.send_config();
                 }
 
-                if let RadarStatus::Connected(uuid) = self.radar_status {
-                    ui.add_space(10.0);
-                    ui.columns(2, |cols| {
-                        if cols[0]
-                            .button(egui::RichText::new(open_browser_text).strong())
-                            .clicked()
-                        {
-                            let link = self.radar_link(&uuid);
-                            let _ = std::process::Command::new("xdg-open").arg(&link).status();
-                            log::info!("opened link ({link})");
-                        }
+                let radius_text = self.t("distance");
+                if drag(
+                    ui,
+                    radius_text,
+                    DragValue::new(&mut self.config.radar.scale)
+                        .range(0.1..=5.0)
+                        .speed(0.1),
+                ) {
+                    self.send_config();
+                }
 
-                        if cols[1]
-                            .button(egui::RichText::new(copy_link_text).strong())
-                            .clicked()
-                        {
-                            let link = self.radar_link(&uuid);
-                            let _ = self.clipboard.set_text(link.clone());
-                            log::info!("copied link ({link})");
-                        }
-                    });
+                // Temporary simple position sliders until drag-and-drop is implemented
+                let pos_x_text = self.t("position_x");
+                if drag(
+                    ui,
+                    pos_x_text,
+                    DragValue::new(&mut self.config.radar.position[0])
+                        .range(0.0..=3840.0)
+                        .speed(1.0),
+                ) {
+                    self.send_config();
+                }
+
+                let pos_y_text = self.t("position_y");
+                if drag(
+                    ui,
+                    pos_y_text,
+                    DragValue::new(&mut self.config.radar.position[1])
+                        .range(0.0..=2160.0)
+                        .speed(1.0),
+                ) {
+                    self.send_config();
                 }
             });
 
             if self.config.radar.enabled != enabled {
                 self.config.radar.enabled = enabled;
-                self.send_message(
-                    Message::RadarSetEnabled(self.config.radar.enabled),
-                    Target::Radar,
-                );
-                self.save();
-            }
-
-            if self.config.radar.enabled {
-                ui.add_space(10.0);
-                ui.label(
-                    egui::RichText::new(radar_desc_text)
-                        .small()
-                        .color(Colors::GRAY),
-                );
+                self.send_config();
             }
         });
     }
