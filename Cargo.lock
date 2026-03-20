@@ -467,7 +467,7 @@ checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 
 [[package]]
 name = "deadlocked"
-version = "4.6.6"
+version = "4.6.8"
 dependencies = [
  "arboard",
  "bytemuck",

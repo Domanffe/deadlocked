@@ -493,13 +493,17 @@ impl Process {
     fn get_pid(process_name: &str) -> Option<i32> {
         let entries = read_dir("/proc").ok()?;
         for dir in entries {
-            let entry = dir.ok()?;
+            let Ok(entry) = dir else {
+                continue;
+            };
             if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                 continue;
             }
 
             let pid_osstr = entry.file_name();
-            let pid = pid_osstr.to_str()?;
+            let Some(pid) = pid_osstr.to_str() else {
+                continue;
+            };
 
             if !pid.chars().all(|char| char.is_numeric()) {
                 continue;
@@ -509,8 +513,12 @@ impl Process {
                 continue;
             };
 
-            let exe_str = exe_path.to_str()?;
-            let (_, exe_name) = exe_str.rsplit_once('/')?;
+            let Some(exe_str) = exe_path.to_str() else {
+                continue;
+            };
+            let Some((_, exe_name)) = exe_str.rsplit_once('/') else {
+                continue;
+            };
 
             if exe_name == process_name {
                 return pid.parse::<i32>().ok();
