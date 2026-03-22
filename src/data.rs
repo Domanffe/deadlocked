@@ -29,6 +29,7 @@ pub struct Data {
     pub map_name: String,
     pub window_position: Vec2,
     pub window_size: Vec2,
+    pub is_focused: bool,
     pub view_matrix: Mat4,
     pub view_angles: Vec2,
     pub local_player: PlayerData,

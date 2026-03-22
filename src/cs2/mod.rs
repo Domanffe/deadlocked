@@ -130,12 +130,14 @@ impl Game for CS2 {
         if sdl_window == 0 {
             data.window_position = Vec2::ZERO;
             data.window_size = Vec2::ONE;
+            data.is_focused = false;
         } else {
             data.window_position = self.process.read::<IVec2>(sdl_window + 0x18).as_vec2();
             data.window_size = self
                 .process
                 .read::<IVec2>(sdl_window + 0x18 + 0x08)
                 .as_vec2();
+            data.is_focused = true;
         }
 
         let Some(local_player) = Player::local_player(self) else {

@@ -29,10 +29,13 @@ impl App {
         let painter = ctx.layer_painter(egui::LayerId::background());
 
         self.update_trails();
-        self.update_player_sounds();
         let data = &self.data.read();
 
         self.update_window(data);
+        if !data.is_focused {
+            return;
+        }
+
         self.overlay_debug(&painter, data);
 
         for player in &data.players {

@@ -394,21 +394,4 @@ impl App {
             }
         }
     }
-
-    pub fn update_player_sounds(&mut self) {
-        let data = self.data.read();
-
-        for player in &data.players {
-            let Some(sound) = &player.sound else {
-                continue;
-            };
-
-            self.player_sounds
-                .insert(player.steam_id, (Instant::now(), *sound));
-        }
-
-        let total_duration = self.total_sound_duration();
-        self.player_sounds
-            .retain(|_, (time, _)| time.elapsed() < total_duration);
-    }
 }
