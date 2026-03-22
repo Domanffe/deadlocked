@@ -30,7 +30,7 @@ impl App {
 
         self.update_trails();
         self.update_player_sounds();
-        let data = &self.data.lock();
+        let data = &self.data.read();
 
         self.update_window(data);
         self.overlay_debug(&painter, data);

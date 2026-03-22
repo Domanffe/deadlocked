@@ -95,7 +95,7 @@ impl App {
 
     fn record_grenade(&mut self, ui: &mut Ui, lang: Language) {
         section(ui, Trans::get(lang, "record_lineup"), None, |ui| {
-            let data = self.data.lock();
+            let data = self.data.read();
 
             if !data.in_game {
                 ui.label(

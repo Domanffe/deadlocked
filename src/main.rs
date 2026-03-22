@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crossbeam::channel::{bounded, unbounded};
+use parking_lot::RwLock;
 use utils::{
     log::{self, Logger, LoggerOptions},
     sync::Mutex,
@@ -58,7 +59,7 @@ fn main() {
     let (tx, rx) = unbounded();
     let (tx_gui, rx_gui) = bounded(16);
     let (tx_game, rx_game) = bounded(16);
-    let data = Arc::new(Mutex::new(Data::default()));
+    let data = Arc::new(RwLock::new(Data::default()));
     let data_game = data.clone();
     let grenades = Arc::new(Mutex::new(read_grenades()));
     let grenades_game = grenades.clone();

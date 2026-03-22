@@ -1,3 +1,4 @@
+use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -37,7 +38,7 @@ pub struct App {
 
     pub tx: Sender<Envelope>,
     pub rx: Receiver<Message>,
-    pub data: Arc<Mutex<Data>>,
+    pub data: Arc<RwLock<Data>>,
 
     pub game_status: GameStatus,
     pub display_scale: f32,
@@ -63,7 +64,7 @@ impl App {
     pub fn new(
         tx: Sender<Envelope>,
         rx: Receiver<Message>,
-        data: Arc<Mutex<Data>>,
+        data: Arc<RwLock<Data>>,
         grenades: Arc<Mutex<GrenadeList>>,
     ) -> Self {
         // read config

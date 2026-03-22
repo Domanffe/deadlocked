@@ -1,6 +1,7 @@
 use std::{sync::Arc, thread::sleep, time::Instant};
 
 use crossbeam::channel::{Receiver, Sender};
+use parking_lot::RwLock;
 use utils::{log, sync::Mutex};
 
 use crate::{
@@ -14,8 +15,9 @@ use crate::{
     ui::grenades::GrenadeList,
 };
 
-pub trait Game: std::fmt::Debug {
+pub trait Game {
     fn is_valid(&self) -> bool;
+
     fn setup(&mut self);
     fn run(&mut self, config: &Config, mouse: &mut Mouse);
     fn data(&self, config: &Config, data: &mut Data);
@@ -24,24 +26,23 @@ pub trait Game: std::fmt::Debug {
 pub struct GameManager {
     tx: Sender<Envelope>,
     rx: Receiver<Message>,
-    data: Arc<Mutex<Data>>,
+    data: Arc<RwLock<Data>>,
     config: Config,
     mouse: Mouse,
-    game: CS2,
+    game: Box<dyn Game>,
 }
 
 impl GameManager {
     pub fn new(
         tx: Sender<Envelope>,
         rx: Receiver<Message>,
-        data: Arc<Mutex<Data>>,
+        data: Arc<RwLock<Data>>,
         grenades: Arc<Mutex<GrenadeList>>,
     ) -> Self {
         let mouse = match Mouse::open() {
             Ok(mouse) => mouse,
             Err(err) => {
-                log::error!("error creating uinput device: {err}");
-                log::error!("uinput kernel module is not loaded, or user is not in input group.");
+                log::error!("failed to open mouse: {}", err);
                 std::process::exit(1);
             }
         };
@@ -52,7 +53,7 @@ impl GameManager {
             data,
             config: Config::default(),
             mouse,
-            game: CS2::new(grenades),
+            game: Box::new(CS2::new(grenades)),
         };
 
         let config_path = CONFIG_PATH.join(DEFAULT_CONFIG_NAME);
@@ -98,10 +99,10 @@ impl GameManager {
                     previous_status = GameStatus::Working;
                 }
                 self.game.run(&self.config, &mut self.mouse);
-                let mut data = self.data.lock();
+                let mut data = self.data.write();
                 self.game.data(&self.config, &mut data);
             } else {
-                *self.data.lock() = Data::default();
+                *self.data.write() = Data::default();
             }
 
             if is_valid {
