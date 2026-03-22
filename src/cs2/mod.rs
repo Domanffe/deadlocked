@@ -163,31 +163,51 @@ impl Game for CS2 {
         }
 
         use crate::os::process::BatchReader;
-        for player in &self.players {
+        let mut batch = BatchReader::new(&self.process);
+
+        struct PlayerBatchIndices {
+            player_idx: usize,
+            steam_id: usize,
+            health: usize,
+            armor: usize,
+            pos: usize,
+            team: usize,
+            life_state: usize,
+            color: usize,
+            rotation: usize,
+        }
+
+        let mut indices_list = Vec::with_capacity(self.players.len());
+
+        for (i, player) in self.players.iter().enumerate() {
             let gs_node = player.game_scene_node(self);
-            let mut batch = BatchReader::new(&self.process);
+            let indices = PlayerBatchIndices {
+                player_idx: i,
+                steam_id: batch.add::<u64>(player.controller + self.offsets.controller.steam_id),
+                health: batch.add::<i32>(player.pawn + self.offsets.pawn.health),
+                armor: batch.add::<i32>(player.pawn + self.offsets.pawn.armor),
+                pos: batch.add::<Vec3>(gs_node + self.offsets.game_scene_node.origin),
+                team: batch.add::<u8>(player.pawn + self.offsets.pawn.team),
+                life_state: batch.add::<u8>(player.pawn + self.offsets.pawn.life_state),
+                color: batch.add::<i32>(player.controller + self.offsets.controller.color),
+                rotation: batch.add::<f32>(player.pawn + self.offsets.pawn.eye_angles + 0x04),
+            };
+            indices_list.push(indices);
+        }
 
-            let steam_id_idx =
-                batch.add::<u64>(player.controller + self.offsets.controller.steam_id);
-            let health_idx = batch.add::<i32>(player.pawn + self.offsets.pawn.health);
-            let armor_idx = batch.add::<i32>(player.pawn + self.offsets.pawn.armor);
-            let pos_idx = batch.add::<Vec3>(gs_node + self.offsets.game_scene_node.origin);
-            let team_idx = batch.add::<u8>(player.pawn + self.offsets.pawn.team);
-            let life_state_idx = batch.add::<u8>(player.pawn + self.offsets.pawn.life_state);
-            let color_idx = batch.add::<i32>(player.controller + self.offsets.controller.color);
-            let rotation_idx = batch.add::<f32>(player.pawn + self.offsets.pawn.eye_angles + 0x04);
+        batch.read();
 
-            batch.read();
-
-            if batch.get::<u8>(life_state_idx) != 0 {
+        for indices in indices_list {
+            let player = &self.players[indices.player_idx];
+            if batch.get::<u8>(indices.life_state) != 0 {
                 continue;
             }
 
             let player_data = PlayerData {
-                steam_id: batch.get(steam_id_idx),
-                health: batch.get(health_idx),
-                armor: batch.get(armor_idx),
-                position: batch.get(pos_idx),
+                steam_id: batch.get(indices.steam_id),
+                health: batch.get(indices.health),
+                armor: batch.get(indices.armor),
+                position: batch.get(indices.pos),
                 head: player.bone_position(self, Bones::Head.u64()),
                 name: player.name(self),
                 weapon: player.weapon(self),
@@ -196,8 +216,8 @@ impl Game for CS2 {
                 has_helmet: player.has_helmet(self),
                 has_bomb: player.has_bomb(self),
                 visible: player.visible(self, &local_player),
-                color: batch.get(color_idx),
-                rotation: batch.get(rotation_idx),
+                color: batch.get(indices.color),
+                rotation: batch.get(indices.rotation),
                 sound: player.is_making_sound(self),
             };
 
@@ -217,7 +237,7 @@ impl Game for CS2 {
                 player_backtrack.pop_front();
             }
 
-            if !self.is_ffa() && batch.get::<u8>(team_idx) == local_team {
+            if !self.is_ffa() && batch.get::<u8>(indices.team) == local_team {
                 data.friendlies.push(player_data);
             } else {
                 data.players.push(player_data);
