@@ -124,9 +124,16 @@ impl App {
                         .button(egui::RichText::new(self.t("report_issue")).small())
                         .clicked()
                     {
-                        let _ = std::process::Command::new("xdg-open")
-                            .arg("https://github.com/Domanffe/deadlocked/issues")
-                            .status();
+                        let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
+                        if !sudo_user.is_empty() {
+                            let _ = std::process::Command::new("sudo")
+                                .args(["-u", &sudo_user, "xdg-open", "https://github.com/Domanffe/deadlocked/issues"])
+                                .status();
+                        } else {
+                            let _ = std::process::Command::new("xdg-open")
+                                .arg("https://github.com/Domanffe/deadlocked/issues")
+                                .status();
+                        }
                     }
 
                     ui.add_space(10.0);

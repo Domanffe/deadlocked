@@ -113,9 +113,17 @@ impl App {
 
                     let open_folder_text = self.t("open_folder");
                     if cols[1].button(open_folder_text).clicked() {
-                        let _ = std::process::Command::new("xdg-open")
-                            .arg(BASE_PATH.as_os_str())
-                            .status();
+                        let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
+                        if !sudo_user.is_empty() {
+                            let _ = std::process::Command::new("sudo")
+                                .args(["-u", &sudo_user, "xdg-open"])
+                                .arg(BASE_PATH.as_os_str())
+                                .status();
+                        } else {
+                            let _ = std::process::Command::new("xdg-open")
+                                .arg(BASE_PATH.as_os_str())
+                                .status();
+                        }
                     }
                 });
             });
