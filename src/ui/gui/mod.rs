@@ -124,16 +124,7 @@ impl App {
                         .button(egui::RichText::new(self.t("report_issue")).small())
                         .clicked()
                     {
-                        let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
-                        if !sudo_user.is_empty() {
-                            let _ = std::process::Command::new("sudo")
-                                .args(["-u", &sudo_user, "xdg-open", "https://github.com/Domanffe/deadlocked/issues"])
-                                .status();
-                        } else {
-                            let _ = std::process::Command::new("xdg-open")
-                                .arg("https://github.com/Domanffe/deadlocked/issues")
-                                .status();
-                        }
+                        self.open_path("https://github.com/Domanffe/deadlocked/issues");
                     }
 
                     ui.add_space(10.0);
@@ -169,6 +160,47 @@ impl App {
                     Tab::Config => self.config_settings(ui, ctx),
                 });
             });
+    }
+    fn open_path(&self, path: &str) {
+        let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
+        let sudo_uid = std::env::var("SUDO_UID").unwrap_or_default();
+
+        if !sudo_user.is_empty() {
+            let mut cmd = std::process::Command::new("sudo");
+            cmd.args(["-u", &sudo_user, "env"]);
+
+            // Mandatory session & DE variables
+            let vars = [
+                "WAYLAND_DISPLAY",
+                "DISPLAY",
+                "XDG_CURRENT_DESKTOP",
+                "XDG_SESSION_TYPE",
+                "XDG_SESSION_DESKTOP",
+                "XDG_RUNTIME_DIR",
+                "DBUS_SESSION_BUS_ADDRESS",
+            ];
+
+            for var in vars {
+                if let Ok(val) = std::env::var(var) {
+                    cmd.arg(format!("{}={}", var, val));
+                }
+            }
+
+            if !sudo_uid.is_empty() {
+                let runtime = format!("/run/user/{}", sudo_uid);
+                if std::path::Path::new(&runtime).exists() {
+                    cmd.arg(format!("XDG_RUNTIME_DIR={}", runtime));
+                    cmd.arg(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus", runtime));
+                }
+            }
+
+            cmd.arg(format!("HOME=/home/{}", sudo_user));
+            cmd.arg(format!("USER={}", sudo_user));
+
+            let _ = cmd.arg("xdg-open").arg(path).status();
+        } else {
+            let _ = std::process::Command::new("xdg-open").arg(path).status();
+        }
     }
 
     fn sidebar_button(&mut self, ui: &mut egui::Ui, tab: Tab, icon: &str, label: &str) {

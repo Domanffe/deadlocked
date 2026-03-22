@@ -535,24 +535,34 @@ impl Default for UnsafeConfig {
 }
 
 pub static BASE_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    let path = std::env::var_os("XDG_CONFIG_HOME")
-        .and_then(|p| {
-            if p.is_empty() {
-                None
-            } else {
-                Some(PathBuf::from(p))
-            }
-        })
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
-        .map(|base| base.join("deadlocked"))
-        .unwrap_or_else(|| {
-            std::env::current_exe()
-                .ok()
-                .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
-                .unwrap_or_else(|| PathBuf::from("."))
-        });
+    let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
+    
+    let base = if !sudo_user.is_empty() {
+        PathBuf::from(format!("/home/{}", sudo_user)).join(".config")
+    } else {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+            .unwrap_or_else(|| {
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
+                    .unwrap_or_else(|| PathBuf::from("."))
+            })
+    };
+
+    let path = base.join("deadlocked");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
+        
+        // Fix permissions for SUDO_USER
+        if !sudo_user.is_empty() {
+            let _ = std::process::Command::new("chown")
+                .arg("-R")
+                .arg(format!("{}:{}", sudo_user, sudo_user))
+                .arg(&path)
+                .status();
+        }
     }
     path
 });
