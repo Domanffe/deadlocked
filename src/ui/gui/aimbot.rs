@@ -5,6 +5,7 @@ use crate::{
     cs2::bones::Bones,
     ui::{
         app::App,
+        color::Colors,
         gui::helpers::{checkbox, checkbox_hover, combo_box, drag, keybind, scroll, section},
     },
 };
@@ -22,9 +23,44 @@ impl App {
         let weapon_icon = self.t("weapon_icon");
 
         ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.aimbot_tab, AimbotTab::Global, global_text);
-            ui.add_space(8.0);
-            ui.selectable_value(&mut self.aimbot_tab, AimbotTab::Weapon, weapon_text);
+            let global_selected = self.aimbot_tab == AimbotTab::Global;
+            if ui
+                .add(
+                    egui::Button::new(global_text)
+                        .fill(if global_selected {
+                            self.config.accent_color.linear_multiply(0.22)
+                        } else {
+                            Colors::HIGHLIGHT
+                        })
+                        .stroke(if global_selected {
+                            egui::Stroke::new(1.0, self.config.accent_color)
+                        } else {
+                            egui::Stroke::new(1.0, Colors::GRAY)
+                        }),
+                )
+                .clicked()
+            {
+                self.aimbot_tab = AimbotTab::Global;
+            }
+            let weapon_selected = self.aimbot_tab == AimbotTab::Weapon;
+            if ui
+                .add(
+                    egui::Button::new(weapon_text)
+                        .fill(if weapon_selected {
+                            self.config.accent_color.linear_multiply(0.22)
+                        } else {
+                            Colors::HIGHLIGHT
+                        })
+                        .stroke(if weapon_selected {
+                            egui::Stroke::new(1.0, self.config.accent_color)
+                        } else {
+                            egui::Stroke::new(1.0, Colors::GRAY)
+                        }),
+                )
+                .clicked()
+            {
+                self.aimbot_tab = AimbotTab::Weapon;
+            }
 
             if self.aimbot_tab == AimbotTab::Weapon {
                 ui.add_space(8.0);

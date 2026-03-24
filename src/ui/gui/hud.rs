@@ -2,7 +2,7 @@ use egui::Ui;
 
 use crate::ui::{
     app::App,
-    gui::helpers::{checkbox, color_picker, scroll, section},
+    gui::helpers::{checkbox, color_picker, scroll, section, slider},
 };
 
 impl App {
@@ -133,14 +133,20 @@ impl App {
                 self.send_config();
             }
             if self.config.hud.fov_arrows {
-                ui.add(
-                    egui::Slider::new(&mut self.config.hud.arrow_size, 5.0..=30.0).text(size_text),
-                );
-                ui.add(
-                    egui::Slider::new(&mut self.config.hud.arrow_radius, 50.0..=400.0)
-                        .text(radius_text),
-                );
-                self.send_config();
+                if slider(
+                    ui,
+                    size_text,
+                    egui::Slider::new(&mut self.config.hud.arrow_size, 5.0..=30.0),
+                ) {
+                    self.send_config();
+                }
+                if slider(
+                    ui,
+                    radius_text,
+                    egui::Slider::new(&mut self.config.hud.arrow_radius, 50.0..=400.0),
+                ) {
+                    self.send_config();
+                }
             }
 
             if checkbox(ui, hitmarker_text, &mut self.config.hud.hitmarker) {

@@ -1,4 +1,4 @@
-# deadlocked v4.6.10
+# deadlocked v4.7.0
 
 A high-performance, external CS2 aimbot and ESP framework for Linux, built with stealth and modern anti-cheat bypasses in mind.
 

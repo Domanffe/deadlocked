@@ -197,32 +197,24 @@ impl App {
 
             ui.add_space(4.0);
             ui.label(self.t("detection_ranges"));
-            ui.horizontal(|ui| {
-                if ui
-                    .add(
-                        DragValue::new(&mut self.config.player.sound.footstep_diameter)
-                            .speed(10.0)
-                            .range(200.0..=6000.0),
-                    )
-                    .changed()
-                {
-                    self.send_config();
-                }
-                ui.label(self.t("footstep"));
-            });
-            ui.horizontal(|ui| {
-                if ui
-                    .add(
-                        DragValue::new(&mut self.config.player.sound.gunshot_diameter)
-                            .speed(10.0)
-                            .range(200.0..=10000.0),
-                    )
-                    .changed()
-                {
-                    self.send_config();
-                }
-                ui.label(self.t("gunshot"));
-            });
+            if drag(
+                ui,
+                self.t("footstep"),
+                DragValue::new(&mut self.config.player.sound.footstep_diameter)
+                    .speed(10.0)
+                    .range(200.0..=6000.0),
+            ) {
+                self.send_config();
+            }
+            if drag(
+                ui,
+                self.t("gunshot"),
+                DragValue::new(&mut self.config.player.sound.gunshot_diameter)
+                    .speed(10.0)
+                    .range(200.0..=10000.0),
+            ) {
+                self.send_config();
+            }
         });
 
         if self.config.player.sound.enabled != sound_enabled {

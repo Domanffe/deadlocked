@@ -28,36 +28,95 @@ impl App {
 
                     let saved_profiles_text = self.t("saved_profiles");
                     section(ui, saved_profiles_text, None, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            let reload_text = self.t("reload");
-                            if ui
-                                .button(reload_text)
-                                .on_hover_text("Reload all configs and grenades")
-                                .clicked()
-                            {
-                                self.available_configs = available_configs();
-                                *self.grenades.lock() = read_grenades();
-                            }
+                        let reload_text = self.t("reload");
+                        let create_text = self.t("create");
 
-                            ui.add_space(4.0);
+                        let mut create_requested = false;
+                        let compact_layout = ui.available_width() < 360.0;
 
-                            ui.add(
-                                egui::TextEdit::singleline(&mut self.new_config_name)
-                                    .desired_width(120.0),
-                            );
-                            let create_text = self.t("create");
-                            if ui.button(create_text).clicked() && !self.new_config_name.is_empty()
-                            {
-                                if !self.new_config_name.ends_with(".toml") {
-                                    self.new_config_name.push_str(".toml");
+                        if compact_layout {
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add(
+                                        Button::new(egui::RichText::new(reload_text).strong())
+                                            .fill(Colors::HIGHLIGHT)
+                                            .stroke(egui::Stroke::new(1.0, Colors::GRAY)),
+                                    )
+                                    .on_hover_text("Reload all configs and grenades")
+                                    .clicked()
+                                {
+                                    self.available_configs = available_configs();
+                                    *self.grenades.lock() = read_grenades();
                                 }
-                                let path = CONFIG_PATH.join(&self.new_config_name);
-                                write_config(&self.config, &path);
-                                self.new_config_name.clear();
-                                self.current_config = path;
-                                self.available_configs = available_configs();
+                            });
+                            ui.add_space(6.0);
+                            ui.horizontal(|ui| {
+                                let button_width = 92.0;
+                                let input_width = (ui.available_width() - button_width - 8.0).max(120.0);
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.new_config_name)
+                                        .hint_text("profile.toml")
+                                        .desired_width(input_width),
+                                );
+                                if ui
+                                    .add(
+                                        Button::new(egui::RichText::new(create_text).strong())
+                                            .fill(self.config.accent_color.linear_multiply(0.24))
+                                            .stroke(egui::Stroke::new(1.0, self.config.accent_color))
+                                            .min_size(egui::vec2(button_width, 32.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    create_requested = true;
+                                }
+                            });
+                        } else {
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add(
+                                        Button::new(egui::RichText::new(reload_text).strong())
+                                            .fill(Colors::HIGHLIGHT)
+                                            .stroke(egui::Stroke::new(1.0, Colors::GRAY)),
+                                    )
+                                    .on_hover_text("Reload all configs and grenades")
+                                    .clicked()
+                                {
+                                    self.available_configs = available_configs();
+                                    *self.grenades.lock() = read_grenades();
+                                }
+
+                                ui.add_space(4.0);
+                                let button_width = 92.0;
+                                let input_width = (ui.available_width() - button_width - 8.0).max(120.0);
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.new_config_name)
+                                        .hint_text("profile.toml")
+                                        .desired_width(input_width),
+                                );
+                                if ui
+                                    .add(
+                                        Button::new(egui::RichText::new(create_text).strong())
+                                            .fill(self.config.accent_color.linear_multiply(0.24))
+                                            .stroke(egui::Stroke::new(1.0, self.config.accent_color))
+                                            .min_size(egui::vec2(button_width, 32.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    create_requested = true;
+                                }
+                            });
+                        }
+
+                        if create_requested && !self.new_config_name.is_empty() {
+                            if !self.new_config_name.ends_with(".toml") {
+                                self.new_config_name.push_str(".toml");
                             }
-                        });
+                            let path = CONFIG_PATH.join(&self.new_config_name);
+                            write_config(&self.config, &path);
+                            self.new_config_name.clear();
+                            self.current_config = path;
+                            self.available_configs = available_configs();
+                        }
 
                         ui.add_space(10.0);
                         self.config_right(ui);
@@ -91,7 +150,11 @@ impl App {
             ui.vertical_centered_justified(|ui| {
                 let save_text = self.t("save_profile");
                 if ui
-                    .button(egui::RichText::new(save_text).strong())
+                    .add(
+                        Button::new(egui::RichText::new(save_text).strong())
+                            .fill(self.config.accent_color.linear_multiply(0.22))
+                            .stroke(egui::Stroke::new(1.0, self.config.accent_color)),
+                    )
                     .on_hover_text("Save current settings to this file")
                     .clicked()
                 {
@@ -101,7 +164,14 @@ impl App {
 
                 ui.columns(2, |cols| {
                     let reset_text = self.t("reset");
-                    if cols[0].button(reset_text).clicked() {
+                    if cols[0]
+                        .add(
+                            Button::new(reset_text)
+                                .fill(Colors::ORANGE.linear_multiply(0.2))
+                                .stroke(egui::Stroke::new(1.0, Colors::ORANGE)),
+                        )
+                        .clicked()
+                    {
                         self.config = Config::default();
                         self.active_preset = None;
                         self.send_message(
@@ -112,7 +182,14 @@ impl App {
                     }
 
                     let open_folder_text = self.t("open_folder");
-                    if cols[1].button(open_folder_text).clicked() {
+                    if cols[1]
+                        .add(
+                            Button::new(open_folder_text)
+                                .fill(Colors::HIGHLIGHT)
+                                .stroke(egui::Stroke::new(1.0, Colors::GRAY)),
+                        )
+                        .clicked()
+                    {
                         self.open_path(&BASE_PATH.to_string_lossy());
                     }
                 });
@@ -124,13 +201,44 @@ impl App {
             ui.horizontal(|ui| {
                 ui.label(format!("{}:", language_text));
                 let mut lang = self.config.language;
-                if ui
-                    .selectable_value(&mut lang, Language::English, "English")
-                    .changed()
-                    || ui
-                        .selectable_value(&mut lang, Language::Russian, "Русский")
-                        .changed()
-                {
+                let english_selected = lang == Language::English;
+                let russian_selected = lang == Language::Russian;
+                let english_clicked = ui
+                    .add(
+                        Button::new("English")
+                            .fill(if english_selected {
+                                self.config.accent_color.linear_multiply(0.22)
+                            } else {
+                                Colors::HIGHLIGHT
+                            })
+                            .stroke(if english_selected {
+                                egui::Stroke::new(1.0, self.config.accent_color)
+                            } else {
+                                egui::Stroke::new(1.0, Colors::GRAY)
+                            }),
+                    )
+                    .clicked();
+                let russian_clicked = ui
+                    .add(
+                        Button::new("Русский")
+                            .fill(if russian_selected {
+                                self.config.accent_color.linear_multiply(0.22)
+                            } else {
+                                Colors::HIGHLIGHT
+                            })
+                            .stroke(if russian_selected {
+                                egui::Stroke::new(1.0, self.config.accent_color)
+                            } else {
+                                egui::Stroke::new(1.0, Colors::GRAY)
+                            }),
+                    )
+                    .clicked();
+                if english_clicked || russian_clicked {
+                    lang = if english_clicked {
+                        Language::English
+                    } else {
+                        Language::Russian
+                    };
                     self.config.language = lang;
                     self.active_preset = None;
                     self.send_message(Message::Config(Box::new(self.config.clone())), Target::Game);
@@ -155,7 +263,15 @@ impl App {
                             .add(
                                 Button::new(name)
                                     .selected(color == self.config.accent_color)
-                                    .fill(color),
+                                    .fill(color)
+                                    .stroke(egui::Stroke::new(
+                                        1.0,
+                                        if color == self.config.accent_color {
+                                            Colors::WHITE
+                                        } else {
+                                            Colors::GRAY
+                                        },
+                                    )),
                             )
                             .clicked()
                         {
@@ -270,7 +386,9 @@ impl App {
             let is_active = *config == self.current_config;
 
             ui.horizontal(|ui| {
-                let name_width = ui.available_width() - 32.0;
+                let delete_button_width = 30.0;
+                let row_gap = 8.0;
+                let name_width = (ui.available_width() - delete_button_width - row_gap).max(120.0);
 
                 let text = if is_active {
                     egui::RichText::new(format!("● {}", name))
@@ -294,7 +412,16 @@ impl App {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let delete_text = self.t("delete");
-                    if ui.button("🗑").on_hover_text(delete_text).clicked() {
+                    if ui
+                        .add(
+                            Button::new("x")
+                                .fill(Colors::RED.linear_multiply(0.16))
+                                .stroke(egui::Stroke::new(1.0, Colors::RED))
+                                .min_size(egui::vec2(delete_button_width, 24.0)),
+                        )
+                        .on_hover_text(delete_text)
+                        .clicked()
+                    {
                         delete = Some(config.clone());
                     }
                 });

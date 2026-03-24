@@ -1,8 +1,31 @@
 use std::hash::Hash;
 
-use egui::{Color32, DragValue, Event, Sense, Ui, Widget};
+use egui::{Color32, DragValue, Event, RichText, Sense, Ui, Widget};
 
 use crate::cs2::key_codes::KeyCode;
+
+fn compact_toggle(ui: &mut Ui, value: &mut bool) -> bool {
+    let text = if *value { "●" } else { "" };
+    let button = egui::Button::new(RichText::new(text).color(Colors::WHITE).size(14.0))
+        .fill(if *value {
+            ui.visuals().selection.bg_fill
+        } else {
+            Colors::HIGHLIGHT
+        })
+        .stroke(if *value {
+            egui::Stroke::new(1.0, ui.visuals().selection.stroke.color)
+        } else {
+            egui::Stroke::new(1.0, Colors::GRAY)
+        })
+        .corner_radius(8.0)
+        .min_size(egui::vec2(24.0, 32.0));
+
+    if ui.add(button).clicked() {
+        *value = !*value;
+        return true;
+    }
+    false
+}
 
 pub fn section(
     ui: &mut Ui,
@@ -10,35 +33,35 @@ pub fn section(
     enabled: Option<&mut bool>,
     add_body: impl FnOnce(&mut Ui),
 ) {
-    let accent_color = ui.visuals().selection.bg_fill; // Use global accent color
+    let accent_color = ui.visuals().selection.bg_fill;
     egui::Frame::NONE
-        .fill(Colors::BASE)
-        .corner_radius(6.0)
-        .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
+        .fill(Colors::HIGHLIGHT.linear_multiply(0.65))
+        .corner_radius(10.0)
+        .stroke(egui::Stroke::new(1.0, Colors::GRAY.linear_multiply(0.7)))
         .inner_margin(16.0)
         .show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let (rect, _response) =
-                        ui.allocate_exact_size(egui::vec2(4.0, 16.0), egui::Sense::hover());
-                    ui.painter().rect_filled(rect, 2.0, accent_color);
+                        ui.allocate_exact_size(egui::vec2(4.0, 18.0), egui::Sense::hover());
+                    ui.painter().rect_filled(rect, 3.0, accent_color);
 
                     ui.label(
                         egui::RichText::new(title)
                             .strong()
-                            .size(18.0)
+                            .size(17.0)
                             .color(Colors::TEXT),
                     );
 
                     if let Some(val) = enabled {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.checkbox(val, "");
+                            let _ = compact_toggle(ui, val);
                         });
                     }
                 });
                 ui.add_space(8.0);
                 ui.separator();
-                ui.add_space(8.0);
+                ui.add_space(10.0);
                 add_body(ui);
             });
         });
@@ -55,23 +78,71 @@ pub fn scroll(ui: &mut Ui, id: &str, add_content: impl FnOnce(&mut Ui)) {
 }
 
 pub fn checkbox(ui: &mut Ui, label: &str, value: &mut bool) -> bool {
-    ui.checkbox(value, label).changed()
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        let label_response = ui.add(
+            egui::Label::new(RichText::new(label).color(Colors::TEXT))
+                .sense(egui::Sense::click()),
+        );
+        if label_response.clicked() {
+            *value = !*value;
+            changed = true;
+        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if compact_toggle(ui, value) {
+                changed = true;
+            }
+        });
+    });
+    changed
 }
 
 pub fn checkbox_hover(ui: &mut Ui, label: &str, hover_text: &str, value: &mut bool) -> bool {
-    ui.checkbox(value, label)
-        .on_hover_text(hover_text)
-        .changed()
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        let label_response = ui
+            .add(
+                egui::Label::new(RichText::new(label).color(Colors::TEXT))
+                    .sense(egui::Sense::click()),
+            )
+            .on_hover_text(hover_text);
+        if label_response.clicked() {
+            *value = !*value;
+            changed = true;
+        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if compact_toggle(ui, value) {
+                changed = true;
+            }
+        });
+    });
+    changed
 }
 
 pub fn drag(ui: &mut Ui, label: &str, drag: DragValue) -> bool {
+    let mut changed = false;
     ui.horizontal(|ui| {
-        let res = ui.add(drag);
-        ui.label(label);
-        res
-    })
-    .inner
-    .changed()
+        ui.label(RichText::new(label).color(Colors::TEXT));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add(drag).changed() {
+                changed = true;
+            }
+        });
+    });
+    changed
+}
+
+pub fn slider(ui: &mut Ui, label: &str, slider: egui::Slider<'_>) -> bool {
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(label).color(Colors::TEXT));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add(slider).changed() {
+                changed = true;
+            }
+        });
+    });
+    changed
 }
 
 pub fn combo_box<T: std::fmt::Debug + strum::IntoEnumIterator + PartialEq>(
@@ -81,16 +152,22 @@ pub fn combo_box<T: std::fmt::Debug + strum::IntoEnumIterator + PartialEq>(
     value: &mut T,
 ) -> bool {
     let mut changed = false;
-    egui::ComboBox::new(id, label)
-        .selected_text(format!("{:?}", *value))
-        .show_ui(ui, |ui| {
-            for mode in T::iter() {
-                let text = format!("{:?}", &mode);
-                if ui.selectable_value(value, mode, text).clicked() {
-                    changed = true;
-                }
-            }
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(label).color(Colors::TEXT));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            egui::ComboBox::from_id_salt(id)
+                .width(130.0)
+                .selected_text(RichText::new(format!("{:?}", *value)).color(Colors::TEXT))
+                .show_ui(ui, |ui| {
+                    for mode in T::iter() {
+                        let text = format!("{:?}", &mode);
+                        if ui.selectable_value(value, mode, text).clicked() {
+                            changed = true;
+                        }
+                    }
+                });
         });
+    });
     changed
 }
 
@@ -123,13 +200,16 @@ pub fn color_picker(ui: &mut Ui, label: &str, color: &mut Color32) -> bool {
 }
 
 pub fn keybind(ui: &mut Ui, id: &str, label: &str, keycode: &mut KeyCode) -> bool {
+    let mut changed = false;
     ui.horizontal(|ui| {
-        let res = ui.add(Keybind::new(keycode, id));
-        ui.label(label);
-        res
-    })
-    .inner
-    .changed()
+        ui.label(RichText::new(label).color(Colors::TEXT));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add(Keybind::new(keycode, id)).changed() {
+                changed = true;
+            }
+        });
+    });
+    changed
 }
 
 pub struct Keybind<'gui> {
@@ -161,7 +241,11 @@ impl<'gui> Widget for Keybind<'gui> {
             format!("{:?}", self.keycode)
         };
 
-        let mut response = ui.button(text);
+        let mut response = ui.button(
+            RichText::new(text)
+                .color(if listening { Colors::WHITE } else { Colors::TEXT })
+                .monospace(),
+        );
 
         if response.clicked() {
             listening = !listening;

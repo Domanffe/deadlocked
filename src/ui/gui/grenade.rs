@@ -8,7 +8,7 @@ use crate::{
         color::Colors,
         grenades::{Grenade, write_grenades},
         gui::{
-            helpers::{scroll, section},
+            helpers::{checkbox, scroll, section},
             translations::Trans,
         },
     },
@@ -72,7 +72,11 @@ impl App {
                         }
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
-                                .button("🗑")
+                                .add(
+                                    egui::Button::new("x")
+                                        .fill(Colors::RED.linear_multiply(0.16))
+                                        .stroke(egui::Stroke::new(1.0, Colors::RED)),
+                                )
                                 .on_hover_text(Trans::get(lang, "delete"))
                                 .clicked()
                             {
@@ -130,19 +134,25 @@ impl App {
 
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.checkbox(
-                    &mut self.new_grenade.modifiers.jump,
+                checkbox(
+                    ui,
                     Trans::get(lang, "jump"),
+                    &mut self.new_grenade.modifiers.jump,
                 );
-                ui.checkbox(
-                    &mut self.new_grenade.modifiers.duck,
+                checkbox(
+                    ui,
                     Trans::get(lang, "duck"),
+                    &mut self.new_grenade.modifiers.duck,
                 );
             });
 
             ui.add_space(10.0);
             if ui
-                .button(egui::RichText::new(Trans::get(lang, "save")).strong())
+                .add(
+                    egui::Button::new(egui::RichText::new(Trans::get(lang, "save")).strong())
+                        .fill(self.config.accent_color.linear_multiply(0.22))
+                        .stroke(egui::Stroke::new(1.0, self.config.accent_color)),
+                )
                 .clicked()
             {
                 let mut grenades = self.grenades.lock();
@@ -184,17 +194,31 @@ impl App {
 
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.checkbox(&mut grenade.modifiers.jump, Trans::get(lang, "jump"));
-                ui.checkbox(&mut grenade.modifiers.duck, Trans::get(lang, "duck"));
+                checkbox(ui, Trans::get(lang, "jump"), &mut grenade.modifiers.jump);
+                checkbox(ui, Trans::get(lang, "duck"), &mut grenade.modifiers.duck);
             });
 
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                if ui.button(Trans::get(lang, "save")).clicked() {
+                if ui
+                    .add(
+                        egui::Button::new(Trans::get(lang, "save"))
+                            .fill(self.config.accent_color.linear_multiply(0.22))
+                            .stroke(egui::Stroke::new(1.0, self.config.accent_color)),
+                    )
+                    .clicked()
+                {
                     write_grenades(&grenades);
                     self.current_grenade = None;
                 }
-                if ui.button(Trans::get(lang, "cancel")).clicked() {
+                if ui
+                    .add(
+                        egui::Button::new(Trans::get(lang, "cancel"))
+                            .fill(Colors::HIGHLIGHT)
+                            .stroke(egui::Stroke::new(1.0, Colors::GRAY)),
+                    )
+                    .clicked()
+                {
                     self.current_grenade = None;
                 }
             });

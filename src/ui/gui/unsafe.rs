@@ -2,6 +2,7 @@ use egui::{DragValue, Ui};
 
 use crate::ui::{
     app::App,
+    color::Colors,
     gui::helpers::{checkbox, drag, scroll, section},
 };
 
@@ -100,7 +101,14 @@ impl App {
                 self.send_config();
             }
 
-            if ui.button(reset_default_text).clicked() {
+            if ui
+                .add(
+                    egui::Button::new(reset_default_text)
+                        .fill(Colors::HIGHLIGHT)
+                        .stroke(egui::Stroke::new(1.0, Colors::GRAY)),
+                )
+                .clicked()
+            {
                 self.config.misc.desired_fov = crate::constants::cs2::DEFAULT_FOV;
                 self.send_config();
             }

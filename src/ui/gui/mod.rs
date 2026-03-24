@@ -55,57 +55,76 @@ impl App {
         ctx.set_pixels_per_point(self.display_scale);
 
         let mut style = (*ctx.style()).clone();
+        style.spacing.item_spacing = egui::vec2(10.0, 10.0);
+        style.spacing.window_margin = egui::Margin::same(14);
+        style.spacing.button_padding = egui::vec2(12.0, 8.0);
+        style.spacing.indent = 14.0;
 
-        // Modern spacing and sizing
-        style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-        style.spacing.window_margin = egui::Margin::same(12);
-        style.spacing.button_padding = egui::vec2(8.0, 4.0);
+        let widget_radius = egui::CornerRadius::same(8);
+        style.visuals.widgets.noninteractive.corner_radius = widget_radius;
+        style.visuals.widgets.inactive.corner_radius = widget_radius;
+        style.visuals.widgets.hovered.corner_radius = widget_radius;
+        style.visuals.widgets.active.corner_radius = widget_radius;
+        style.visuals.widgets.open.corner_radius = widget_radius;
 
-        // Refined corner radiuses for egui 0.33
-        let radius = egui::CornerRadius::same(4);
-        style.visuals.widgets.noninteractive.corner_radius = radius;
-        style.visuals.widgets.inactive.corner_radius = radius;
-        style.visuals.widgets.hovered.corner_radius = radius;
-        style.visuals.widgets.active.corner_radius = radius;
-        style.visuals.widgets.open.corner_radius = radius;
+        style.visuals.window_corner_radius = egui::CornerRadius::same(12);
+        style.visuals.menu_corner_radius = egui::CornerRadius::same(10);
+        style.visuals.override_text_color = Some(Colors::TEXT);
+        style.visuals.window_fill = Colors::BASE;
+        style.visuals.panel_fill = Colors::BASE;
+        style.visuals.extreme_bg_color = Colors::BACKDROP;
+        style.visuals.faint_bg_color = Colors::HIGHLIGHT;
 
-        style.visuals.window_corner_radius = egui::CornerRadius::same(8);
-        style.visuals.menu_corner_radius = egui::CornerRadius::same(6);
-
-        // Premium dark colors
         style.visuals.widgets.noninteractive.bg_fill = Colors::BASE;
         style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
-        style.visuals.widgets.inactive.bg_fill = Colors::BACKDROP;
-        style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Colors::HIGHLIGHT);
+        style.visuals.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0, Colors::SUBTEXT);
 
-        style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT;
-        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, self.config.accent_color);
+        style.visuals.widgets.inactive.bg_fill = Colors::HIGHLIGHT;
+        style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Colors::GRAY);
+        style.visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0, Colors::TEXT);
 
-        style.visuals.widgets.active.bg_fill = self.config.accent_color;
-        style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
+        style.visuals.widgets.hovered.bg_fill = Colors::HIGHLIGHT.gamma_multiply(1.12);
+        style.visuals.widgets.hovered.bg_stroke =
+            egui::Stroke::new(1.0, self.config.accent_color.linear_multiply(0.7));
+        style.visuals.widgets.hovered.fg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
 
-        style.visuals.selection.bg_fill = self.config.accent_color;
-        style.visuals.selection.stroke = egui::Stroke::new(1.0, Colors::WHITE);
+        style.visuals.widgets.active.bg_fill = self.config.accent_color.linear_multiply(0.28);
+        style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.2, self.config.accent_color);
+        style.visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
 
-        // Subtler shadows
-        style.visuals.window_shadow.color = egui::Color32::from_black_alpha(150);
+        style.visuals.selection.bg_fill = self.config.accent_color.linear_multiply(0.36);
+        style.visuals.selection.stroke = egui::Stroke::new(1.0, self.config.accent_color);
+        style.visuals.window_shadow.color = egui::Color32::from_black_alpha(175);
+        style.visuals.window_shadow.spread = 10;
 
         ctx.set_style(style);
 
         egui::SidePanel::left("sidebar")
             .resizable(false)
-            .default_width(160.0)
-            .frame(egui::Frame::NONE.fill(Colors::BACKDROP).inner_margin(10.0))
+            .default_width(188.0)
+            .frame(
+                egui::Frame::NONE
+                    .fill(Colors::BACKDROP)
+                    .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
+                    .inner_margin(egui::Margin::same(12)),
+            )
             .show(ctx, |ui| {
+                let stripe_rect = egui::Rect::from_min_size(
+                    ui.min_rect().left_top(),
+                    egui::vec2(ui.available_width(), 2.0),
+                );
+                ui.painter()
+                    .rect_filled(stripe_rect, 0.0, self.config.accent_color);
+
                 ui.vertical_centered(|ui| {
-                    ui.add_space(10.0);
+                    ui.add_space(14.0);
                     ui.heading(
-                        egui::RichText::new("DEADLOCKED")
+                        egui::RichText::new("DEADLOCKED // 4.7")
                             .strong()
                             .color(self.config.accent_color)
                             .size(20.0),
                     );
-                    ui.add_space(20.0);
+                    ui.add_space(14.0);
                 });
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
@@ -148,7 +167,12 @@ impl App {
             });
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(Colors::BASE).inner_margin(20.0))
+            .frame(
+                egui::Frame::NONE
+                    .fill(Colors::BASE)
+                    .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
+                    .inner_margin(egui::Margin::same(18)),
+            )
             .show(ctx, |ui| {
                 ui.vertical(|ui| match self.current_tab {
                     Tab::Aimbot => self.aimbot_settings(ui),
@@ -217,14 +241,19 @@ impl App {
             .strong(); // make sidebar text a bit bolder
 
         let fill = if is_selected {
-            Colors::HIGHLIGHT
+            self.config.accent_color.linear_multiply(0.20)
         } else {
             egui::Color32::TRANSPARENT
         };
 
         let button = egui::Button::new(text)
             .fill(fill)
-            .min_size(egui::vec2(140.0, 32.0)); // Pill shape constraint
+            .stroke(if is_selected {
+                egui::Stroke::new(1.0, self.config.accent_color.linear_multiply(0.85))
+            } else {
+                egui::Stroke::new(1.0, Colors::HIGHLIGHT)
+            })
+            .min_size(egui::vec2(164.0, 36.0));
 
         if ui.add(button).clicked() {
             self.current_tab = tab;
