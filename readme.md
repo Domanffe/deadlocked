@@ -1,8 +1,27 @@
-# deadlocked v4.6.8
+# deadlocked v4.6.10
 
 A high-performance, external CS2 aimbot and ESP framework for Linux, built with stealth and modern anti-cheat bypasses in mind.
 
 ## Setup
+
+### Recommended: Download Release (Easiest)
+
+Releases are the easiest way to get started (no `git clone` needed):
+
+1. Open Releases: https://github.com/Domanffe/deadlocked/releases
+2. Download the latest Linux archive.
+3. Extract it and run:
+
+```bash
+chmod +x deadlocked
+./deadlocked
+```
+
+> [!NOTE]
+> Release archive contains only the `deadlocked` binary (see `.github/workflows/release.yml`).
+> `run.sh` and `setup.sh` are for source workflow.
+
+### From Source (Development)
 
 ```bash
 ./setup.sh
@@ -19,7 +38,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ## Running
 
 ```bash
-./run.sh
+./deadlocked   # if you downloaded a Release
+# or
+./run.sh   # if you cloned the repository
 ```
 
 > [!IMPORTANT]

@@ -594,8 +594,16 @@ pub fn parse_config(path: &Path) -> Config {
 }
 
 pub fn write_config(config: &Config, path: &Path) {
-    let out = toml::to_string(&config).unwrap();
-    let _ = std::fs::write(path, out);
+    let out = match toml::to_string(&config) {
+        Ok(out) => out,
+        Err(err) => {
+            log::warn!("failed to serialize config: {err}");
+            return;
+        }
+    };
+    if let Err(err) = std::fs::write(path, out) {
+        log::warn!("failed to write config {}: {err}", path.display());
+    }
 }
 
 pub fn delete_config(path: &Path) {
@@ -641,4 +649,34 @@ pub fn available_configs() -> Vec<PathBuf> {
         files.push(path);
     }
     files
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Config, Language};
+    use crate::ui::color::Colors;
+
+    #[test]
+    fn load_preset_preserves_language_and_accent() {
+        let mut cfg = Config {
+            language: Language::Russian,
+            accent_color: Colors::RED,
+            ..Config::default()
+        };
+
+        cfg.load_preset(2);
+
+        assert_eq!(cfg.language, Language::Russian);
+        assert_eq!(cfg.accent_color, Colors::RED);
+    }
+
+    #[test]
+    fn rage_preset_enables_expected_features() {
+        let mut cfg = Config::default();
+        cfg.load_preset(4);
+
+        assert_eq!(cfg.aim.global.aimbot.fov, 45.0);
+        assert!(cfg.aim.global.triggerbot.enabled);
+        assert!(cfg.misc.bunnyhop);
+    }
 }

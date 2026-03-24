@@ -3,7 +3,7 @@ use std::{
     io::Write,
     os::fd::AsRawFd,
     path::Path,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -99,6 +99,8 @@ pub struct Mouse {
 }
 
 static CREATED: AtomicBool = AtomicBool::new(false);
+static WRITE_FAILURES: AtomicU64 = AtomicU64::new(0);
+
 impl Mouse {
     pub fn open() -> Result<Self, String> {
         if CREATED.swap(true, Ordering::Relaxed) {
@@ -133,7 +135,9 @@ impl Mouse {
     }
 
     pub fn move_rel(&mut self, coords: &Vec2) {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+            return;
+        };
         let time = Timeval {
             seconds: now.as_secs(),
             microseconds: now.subsec_micros() as u64,
@@ -160,9 +164,17 @@ impl Mouse {
             value: 0,
         };
 
-        self.file.write_all(&x.bytes()).unwrap();
-        self.file.write_all(&y.bytes()).unwrap();
-        self.file.write_all(&syn.bytes()).unwrap();
+        if let Err(err) = self.file.write_all(&x.bytes()) {
+            Self::log_write_failure(err);
+            return;
+        }
+        if let Err(err) = self.file.write_all(&y.bytes()) {
+            Self::log_write_failure(err);
+            return;
+        }
+        if let Err(err) = self.file.write_all(&syn.bytes()) {
+            Self::log_write_failure(err);
+        }
     }
 
     fn cubic_bezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
@@ -180,7 +192,10 @@ impl Mouse {
         use rand_distr::{Distribution, Normal};
 
         let mut rng = rand::rng();
-        let normal = Normal::new(0.0, 0.15).unwrap(); // Gaussian tremor intensity
+        let normal = Normal::new(0.0, 0.15).ok(); // Gaussian tremor intensity
+        let sample_gauss = |rng: &mut rand::rngs::ThreadRng| -> f32 {
+            normal.as_ref().map_or(0.0, |dist| dist.sample(rng) as f32)
+        };
 
         // sub-pixel precision
         let total = *coords + self.remainder;
@@ -196,8 +211,8 @@ impl Mouse {
                 let mut jitter_y = (rng.random::<f32>() * 2.0 - 1.0) * jitter_factor;
 
                 if advanced {
-                    jitter_x += normal.sample(&mut rng) as f32 * jitter_factor;
-                    jitter_y += normal.sample(&mut rng) as f32 * jitter_factor;
+                    jitter_x += sample_gauss(&mut rng) * jitter_factor;
+                    jitter_y += sample_gauss(&mut rng) * jitter_factor;
                 }
 
                 x += jitter_x;
@@ -239,16 +254,8 @@ impl Mouse {
 
         if advanced {
             // Apply Gaussian noise to control points for organic "wobble"
-            p1 += Vec2::new(
-                normal.sample(&mut rng) as f32,
-                normal.sample(&mut rng) as f32,
-            ) * curve_intensity
-                * 0.2;
-            p2 += Vec2::new(
-                normal.sample(&mut rng) as f32,
-                normal.sample(&mut rng) as f32,
-            ) * curve_intensity
-                * 0.2;
+            p1 += Vec2::new(sample_gauss(&mut rng), sample_gauss(&mut rng)) * curve_intensity * 0.2;
+            p2 += Vec2::new(sample_gauss(&mut rng), sample_gauss(&mut rng)) * curve_intensity * 0.2;
         }
 
         for i in 1..=steps {
@@ -257,10 +264,7 @@ impl Mouse {
 
             if advanced {
                 // Micro-tremors on every step of the curve
-                current_pos += Vec2::new(
-                    normal.sample(&mut rng) as f32,
-                    normal.sample(&mut rng) as f32,
-                ) * 0.1;
+                current_pos += Vec2::new(sample_gauss(&mut rng), sample_gauss(&mut rng)) * 0.1;
             }
 
             let delta = current_pos - last_pos;
@@ -294,7 +298,9 @@ impl Mouse {
     }
 
     fn key(&mut self, code: u16, pressed: i32) {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+            return;
+        };
         let time = Timeval {
             seconds: now.as_secs(),
             microseconds: now.subsec_micros() as u64,
@@ -314,8 +320,20 @@ impl Mouse {
             value: 0,
         };
 
-        self.file.write_all(&press.bytes()).unwrap();
-        self.file.write_all(&syn.bytes()).unwrap();
+        if let Err(err) = self.file.write_all(&press.bytes()) {
+            Self::log_write_failure(err);
+            return;
+        }
+        if let Err(err) = self.file.write_all(&syn.bytes()) {
+            Self::log_write_failure(err);
+        }
+    }
+
+    fn log_write_failure(err: std::io::Error) {
+        let n = WRITE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+        if n <= 5 || n.is_multiple_of(1000) {
+            log::warn!("failed to write uinput event: {err} (count={n})");
+        }
     }
 }
 

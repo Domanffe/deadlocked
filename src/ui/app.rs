@@ -105,8 +105,14 @@ impl App {
     }
 
     fn create_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        let gui = WindowContext::new(event_loop, false, self.config.accent_color);
-        let overlay = WindowContext::new(event_loop, true, self.config.accent_color);
+        let Some(gui) = WindowContext::new(event_loop, false, self.config.accent_color) else {
+            log::error!("failed to create gui window context");
+            return;
+        };
+        let Some(overlay) = WindowContext::new(event_loop, true, self.config.accent_color) else {
+            log::error!("failed to create overlay window context");
+            return;
+        };
 
         self.display_scale = gui.window().scale_factor() as f32;
         log::info!("detected display scale: {}", self.display_scale);
@@ -150,17 +156,22 @@ impl ApplicationHandler for App {
             }
         }
 
-        let Some(gui) = &self.gui else {
+        let Some(gui_id) = self.gui.as_ref().map(|w| w.window().id()) else {
             return;
         };
-        let Some(overlay) = &self.overlay else {
+        let Some(overlay_id) = self.overlay.as_ref().map(|w| w.window().id()) else {
             return;
         };
 
-        let window = if gui.window().id() == window_id {
-            gui
-        } else if overlay.window().id() == window_id {
-            overlay
+        enum WindowTarget {
+            Gui,
+            Overlay,
+        }
+
+        let target = if gui_id == window_id {
+            WindowTarget::Gui
+        } else if overlay_id == window_id {
+            WindowTarget::Overlay
         } else {
             return;
         };
@@ -168,7 +179,18 @@ impl ApplicationHandler for App {
         match &window_event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(new_size) => {
-                window.resize(*new_size);
+                match target {
+                    WindowTarget::Gui => {
+                        if let Some(gui) = &self.gui {
+                            gui.resize(*new_size);
+                        }
+                    }
+                    WindowTarget::Overlay => {
+                        if let Some(overlay) = &self.overlay {
+                            overlay.resize(*new_size);
+                        }
+                    }
+                }
             }
             WindowEvent::KeyboardInput {
                 event: key_event, ..
@@ -178,36 +200,40 @@ impl ApplicationHandler for App {
                     Key::Named(winit::keyboard::NamedKey::Control)
                     | Key::Named(winit::keyboard::NamedKey::Shift)
                     | Key::Named(winit::keyboard::NamedKey::Alt) => {
-                        let modifiers = self.gui.as_ref().unwrap().modifiers();
-                        self.gui.as_mut().unwrap().process_modifier(
-                            modifiers,
-                            key_event.state == ElementState::Pressed,
-                            key_event.repeat,
-                        );
+                        let modifiers = self.gui.as_ref().map(|gui| gui.modifiers());
+                        if let (Some(modifiers), Some(gui)) = (modifiers, self.gui.as_mut()) {
+                            gui.process_modifier(
+                                modifiers,
+                                key_event.state == ElementState::Pressed,
+                                key_event.repeat,
+                            );
+                        }
                     }
                     _ => {}
                 }
 
-                let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
-                if event_response.repaint {
-                    self.gui.as_ref().unwrap().request_redraw();
+                if let Some(gui) = self.gui.as_mut() {
+                    let event_response = gui.process_event(&window_event);
+                    if event_response.repaint {
+                        gui.request_redraw();
+                    }
                 }
             }
             WindowEvent::RedrawRequested => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
                     self.next_frame_time,
                 ));
-                if window_id == gui.window().id() {
-                    self.render_gui();
-                } else if window_id == overlay.window().id() {
-                    self.render_overlay();
+                match target {
+                    WindowTarget::Gui => self.render_gui(),
+                    WindowTarget::Overlay => self.render_overlay(),
                 }
             }
             _ => {
-                let event_response = self.gui.as_mut().unwrap().process_event(&window_event);
-
-                if event_response.repaint {
-                    self.gui.as_ref().unwrap().request_redraw();
+                if let Some(gui) = self.gui.as_mut() {
+                    let event_response = gui.process_event(&window_event);
+                    if event_response.repaint {
+                        gui.request_redraw();
+                    }
                 }
             }
         }

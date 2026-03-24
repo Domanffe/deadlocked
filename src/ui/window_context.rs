@@ -3,6 +3,7 @@ use std::{num::NonZeroU32, sync::Arc};
 use egui::{Color32, FontData, FontDefinitions, Stroke, Style};
 use egui_glow::glow::{self, HasContext as _};
 use glutin::prelude::PossiblyCurrentGlContext;
+use utils::log;
 use winit::platform::x11::{WindowAttributesExtX11, WindowType};
 
 use crate::ui::color::Colors;
@@ -22,7 +23,7 @@ impl WindowContext {
         event_loop: &winit::event_loop::ActiveEventLoop,
         overlay: bool,
         accent_color: egui::Color32,
-    ) -> Self {
+    ) -> Option<Self> {
         use glutin::context::NotCurrentGlContext as _;
         use glutin::display::GetGlDisplay as _;
         use glutin::display::GlDisplay as _;
@@ -71,20 +72,15 @@ impl WindowContext {
                 .build(
                     event_loop,
                     config_template_builder,
-                    |mut config_iterator| {
-                        config_iterator.next().expect(
-                            "failed to find a matching configuration for creating glutin config",
-                        )
-                    },
+                    |mut config_iterator| config_iterator.next().unwrap_or_else(|| panic!()),
                 )
-                .expect("failed to create gl_config");
+                .ok()?;
         let gl_display = gl_config.display();
 
         let raw_window_handle = window.as_ref().map(|w| {
-            w.window_handle()
-                .expect("failed to get window handle")
-                .as_raw()
+            w.window_handle().ok().map(|h| h.as_raw())
         });
+        let raw_window_handle = raw_window_handle.flatten();
         let context_attributes =
             glutin::context::ContextAttributesBuilder::new().build(raw_window_handle);
         let fallback_context_attributes = glutin::context::ContextAttributesBuilder::new()
@@ -97,49 +93,58 @@ impl WindowContext {
                     gl_config
                         .display()
                         .create_context(&gl_config, &fallback_context_attributes)
-                        .expect("failed to create context even with fallback attributes")
+                        .unwrap_or_else(|err| {
+                            panic!("failed to create context even with fallback attributes: {err}")
+                        })
                 })
         };
 
         // this is where the window is created, if it has not been created while searching for suitable gl_config
         let window = window.take().unwrap_or_else(|| {
             glutin_winit::finalize_window(event_loop, winit_window_builder.clone(), &gl_config)
-                .expect("failed to finalize glutin window")
+                .unwrap_or_else(|err| panic!("failed to finalize glutin window: {err}"))
         });
         let (width, height): (u32, u32) = window.inner_size().into();
         let width = NonZeroU32::new(width).unwrap_or(NonZeroU32::MIN);
         let height = NonZeroU32::new(height).unwrap_or(NonZeroU32::MIN);
+        let Some(window_handle) = window.window_handle().ok().map(|h| h.as_raw()) else {
+            log::error!("failed to get window handle");
+            return None;
+        };
         let surface_attributes =
             glutin::surface::SurfaceAttributesBuilder::<glutin::surface::WindowSurface>::new()
-                .build(
-                    window
-                        .window_handle()
-                        .expect("failed to get window handle")
-                        .as_raw(),
-                    width,
-                    height,
-                );
-        let gl_surface = unsafe {
-            gl_display
-                .create_window_surface(&gl_config, &surface_attributes)
-                .unwrap()
+                .build(window_handle, width, height);
+        let gl_surface = match unsafe { gl_display.create_window_surface(&gl_config, &surface_attributes) } {
+            Ok(surface) => surface,
+            Err(err) => {
+                log::error!("failed to create window surface: {err}");
+                return None;
+            }
         };
-        let gl_context = not_current_gl_context.make_current(&gl_surface).unwrap();
+        let gl_context = match not_current_gl_context.make_current(&gl_surface) {
+            Ok(context) => context,
+            Err(err) => {
+                log::error!("failed to make gl context current: {err}");
+                return None;
+            }
+        };
 
-        gl_surface
-            .set_swap_interval(&gl_context, glutin::surface::SwapInterval::DontWait)
-            .unwrap();
+        if let Err(err) =
+            gl_surface.set_swap_interval(&gl_context, glutin::surface::SwapInterval::DontWait)
+        {
+            log::warn!("failed to set swap interval: {err}");
+        }
 
         if overlay {
-            window.set_cursor_hittest(false).unwrap();
+            let _ = window.set_cursor_hittest(false);
             window.set_outer_position(winit::dpi::PhysicalPosition::new(0, 0));
         }
 
         let glow = unsafe {
             glow::Context::from_loader_function(|s| {
-                let s = std::ffi::CString::new(s)
-                    .expect("failed to construct C string from string for gl proc address");
-
+                let Ok(s) = std::ffi::CString::new(s) else {
+                    return std::ptr::null();
+                };
                 gl_display.get_proc_address(&s)
             })
         };
@@ -154,7 +159,7 @@ impl WindowContext {
             Color32::BLACK
         };
 
-        Self {
+        Some(Self {
             window,
             gl_context,
             _gl_display: gl_display,
@@ -162,7 +167,7 @@ impl WindowContext {
             glow,
             egui_glow,
             clear_color,
-        }
+        })
     }
 
     pub fn window(&self) -> &winit::window::Window {
@@ -247,16 +252,18 @@ fn prep_ctx(ctx: &mut egui::Context, accent_color: egui::Color32) {
     );
 
     // insert into font definitions, so it gets chosen as default
-    font_definitions
+    if let Some(family) = font_definitions
         .families
         .get_mut(&egui::FontFamily::Proportional)
-        .unwrap()
-        .insert(0, String::from("fira_sans"));
-    font_definitions
+    {
+        family.insert(0, String::from("fira_sans"));
+    }
+    if let Some(family) = font_definitions
         .families
         .get_mut(&egui::FontFamily::Monospace)
-        .unwrap()
-        .insert(0, String::from("cs2_icons"));
+    {
+        family.insert(0, String::from("cs2_icons"));
+    }
 
     ctx.set_fonts(font_definitions);
 

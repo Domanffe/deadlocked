@@ -156,7 +156,9 @@ impl Bvh {
 
     pub fn save(&self, file: &mut File) {
         let mut writer = BufWriter::new(file);
-        postcard::to_io(self, &mut writer).unwrap();
+        if let Err(err) = postcard::to_io(self, &mut writer) {
+            utils::log::warn!("failed to serialize bvh: {err}");
+        }
     }
 
     pub fn load(file: &mut File) -> Option<Self> {
@@ -230,7 +232,9 @@ impl Bvh {
         primitives.sort_by(|&a_idx, &b_idx| {
             let a_cent = self.triangles[a_idx].centroid();
             let b_cent = self.triangles[b_idx].centroid();
-            a_cent[axis].partial_cmp(&b_cent[axis]).unwrap()
+            a_cent[axis]
+                .partial_cmp(&b_cent[axis])
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let mid = primitives.len() / 2;
@@ -396,5 +400,44 @@ impl BvhNode {
             BvhNode::Branch { aabb, .. } => aabb,
             BvhNode::Leaf { aabb, .. } => aabb,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use glam::vec3;
+
+    use super::{Bvh, Triangle};
+
+    #[test]
+    fn has_line_of_sight_when_no_geometry() {
+        let bvh = Bvh::new();
+        assert!(bvh.has_line_of_sight(vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0)));
+    }
+
+    #[test]
+    fn blocks_line_of_sight_when_triangle_intersects_segment() {
+        let mut bvh = Bvh::new();
+        bvh.insert(Triangle::new(
+            vec3(5.0, -10.0, -10.0),
+            vec3(5.0, 10.0, -10.0),
+            vec3(5.0, 0.0, 10.0),
+        ));
+        bvh.build();
+
+        assert!(!bvh.has_line_of_sight(vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0)));
+    }
+
+    #[test]
+    fn keeps_line_of_sight_when_segment_misses_triangle() {
+        let mut bvh = Bvh::new();
+        bvh.insert(Triangle::new(
+            vec3(5.0, -1.0, -1.0),
+            vec3(5.0, 1.0, -1.0),
+            vec3(5.0, 0.0, 1.0),
+        ));
+        bvh.build();
+
+        assert!(bvh.has_line_of_sight(vec3(0.0, 20.0, 0.0), vec3(10.0, 20.0, 0.0)));
     }
 }

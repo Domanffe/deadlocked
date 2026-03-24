@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::HashSet,
+    sync::Arc,
+};
 
 use glam::{IVec2, Mat4, Vec2, Vec3};
 use utils::{log, sync::Mutex};
@@ -88,8 +91,10 @@ impl Game for CS2 {
 
         self.input.update(&self.process, &self.offsets);
 
-        // self.cache_players();
         self.cache_entities();
+        if self.players.is_empty() {
+            self.cache_players();
+        }
         self.check_bvh();
 
         for entity in &self.entities {
@@ -128,15 +133,28 @@ impl Game for CS2 {
 
         let sdl_window = self.process.read::<u64>(self.offsets.direct.sdl_window);
         if sdl_window == 0 {
-            data.window_position = Vec2::ZERO;
-            data.window_size = Vec2::ONE;
+            // Keep the last valid geometry on transient SDL handle loss.
+            if data.window_size.x <= 1.0 || data.window_size.y <= 1.0 {
+                data.window_position = Vec2::ZERO;
+                data.window_size = Vec2::new(1920.0, 1080.0);
+            }
             data.is_focused = false;
         } else {
-            data.window_position = self.process.read::<IVec2>(sdl_window + 0x18).as_vec2();
-            data.window_size = self
+            let window_position = self.process.read::<IVec2>(sdl_window + 0x18).as_vec2();
+            let window_size = self
                 .process
                 .read::<IVec2>(sdl_window + 0x18 + 0x08)
                 .as_vec2();
+            let position_is_sane = window_position.x.is_finite()
+                && window_position.y.is_finite()
+                && window_position.x.abs() < 20_000.0
+                && window_position.y.abs() < 20_000.0;
+            if window_size.x > 64.0 && window_size.y > 64.0 {
+                if position_is_sane {
+                    data.window_position = window_position;
+                }
+                data.window_size = window_size;
+            }
             data.is_focused = true;
         }
 
@@ -147,12 +165,7 @@ impl Game for CS2 {
         };
         let local_team = local_player.team(self);
         let local_pawn = local_player.pawn;
-
-        if local_team != TEAM_T && local_team != TEAM_CT {
-            data.weapon = Weapon::default();
-            data.in_game = false;
-            return;
-        }
+        let local_team_valid = local_team == TEAM_T || local_team == TEAM_CT;
 
         data.spectators.clear();
         for i in 0..=64 {
@@ -239,7 +252,7 @@ impl Game for CS2 {
                 player_backtrack.pop_front();
             }
 
-            if !self.is_ffa() && batch.get::<u8>(indices.team) == local_team {
+            if local_team_valid && !self.is_ffa() && batch.get::<u8>(indices.team) == local_team {
                 data.friendlies.push(player_data);
             } else {
                 data.players.push(player_data);
@@ -248,7 +261,7 @@ impl Game for CS2 {
 
         {
             let mut history = self.target.backtrack_history.borrow_mut();
-            let active_ids: Vec<u64> = data
+            let active_ids: HashSet<u64> = data
                 .players
                 .iter()
                 .chain(data.friendlies.iter())
@@ -299,6 +312,7 @@ impl Game for CS2 {
             .collect();
 
         data.weapon = local_player.weapon(self);
+        // Fail-open: if local player is valid, keep data flow alive even when team read is transient.
         data.in_game = true;
         data.is_ffa = self.is_ffa();
         data.is_custom_mode = self.is_custom_game_mode();
@@ -327,6 +341,7 @@ impl Game for CS2 {
         } else {
             data.bomb.planted = false;
         }
+
     }
 }
 

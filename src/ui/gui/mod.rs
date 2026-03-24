@@ -234,55 +234,64 @@ impl App {
 
     fn weapon_config(&mut self) -> &mut WeaponConfig {
         if self.aimbot_tab == AimbotTab::Weapon {
-            self.config
-                .aim
-                .weapons
-                .get_mut(&self.aimbot_weapon)
-                .unwrap()
+            if let Some(weapon) = self.config.aim.weapons.get_mut(&self.aimbot_weapon) {
+                weapon
+            } else {
+                &mut self.config.aim.global
+            }
         } else {
             &mut self.config.aim.global
         }
     }
 
     pub fn render_gui(&mut self) {
-        let self_ptr = self as *mut Self;
-        let Some(gui) = self.gui.as_mut() else {
+        let Some(mut gui) = self.gui.take() else {
             return;
         };
 
         if let Err(err) = gui.make_current() {
             log::error!("could not make gui window current: {err}");
+            self.gui = Some(gui);
             return;
         }
-        gui.run(|ctx| (unsafe { &mut *self_ptr }).gui(ctx));
+        gui.run(|ctx| self.gui(ctx));
         gui.clear();
         gui.paint();
 
         if let Err(err) = gui.swap_buffers() {
             log::error!("could not swap gui window buffers: {err}");
         }
+
+        self.gui = Some(gui);
     }
 
     pub fn render_overlay(&mut self) {
-        let self_ptr = self as *mut Self;
-        let Some(overlay) = self.overlay.as_mut() else {
+        let Some(mut overlay) = self.overlay.take() else {
             return;
         };
 
-        overlay.window().set_cursor_hittest(false).unwrap();
+        if let Err(err) = overlay.window().set_cursor_hittest(false) {
+            log::warn!("could not disable overlay cursor hit-test: {err}");
+        }
         if let Err(err) = overlay.make_current() {
             log::error!("could not make overlay window current: {err}");
+            self.overlay = Some(overlay);
             return;
         }
 
-        overlay.run(move |egui_ctx| {
-            (unsafe { &mut *self_ptr }).overlay(egui_ctx);
-        });
+        {
+            let data = self.data.read();
+            self.update_window(&overlay, &data);
+        }
+
+        overlay.run(|egui_ctx| self.overlay(egui_ctx));
         overlay.clear();
         overlay.paint();
 
         if let Err(err) = overlay.swap_buffers() {
             log::error!("could not swap overlay window buffers: {err}");
         }
+
+        self.overlay = Some(overlay);
     }
 }

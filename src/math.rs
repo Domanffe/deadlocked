@@ -114,3 +114,32 @@ pub fn world_to_screen(position: &Vec3, data: &crate::data::Data) -> Option<egui
 
     Some(egui::pos2(screen_position.x, screen_position.y))
 }
+
+#[cfg(test)]
+mod tests {
+    use glam::{Vec2, vec3};
+
+    use super::{angles_to_fov, dist_to_line, vec2_clamp};
+
+    #[test]
+    fn angles_to_fov_handles_yaw_wrap() {
+        let view = Vec2::new(0.0, 359.0);
+        let aim = Vec2::new(0.0, 1.0);
+        let fov = angles_to_fov(&view, &aim);
+        assert!((fov - 2.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn vec2_clamp_limits_pitch_and_wraps_yaw() {
+        let mut angles = Vec2::new(120.0, 370.0);
+        vec2_clamp(&mut angles);
+        assert!((angles.x - 89.0).abs() < 1e-6);
+        assert!((angles.y - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn dist_to_line_clamps_to_segment_endpoints() {
+        let d = dist_to_line(vec3(5.0, 5.0, 0.0), vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0));
+        assert!((d - 5.0).abs() < 1e-6);
+    }
+}

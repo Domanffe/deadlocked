@@ -45,16 +45,32 @@ pub fn read_grenades() -> GrenadeList {
         return GrenadeList::default();
     }
 
-    let grenade_list_file = read_to_string(path).unwrap();
-    let grenade_list = serde_json::from_str(&grenade_list_file);
-    if grenade_list.is_err() {
-        log::warn!("grenade list file invalid");
+    let grenade_list_file = match read_to_string(&path) {
+        Ok(content) => content,
+        Err(err) => {
+            log::warn!("failed to read grenade list file {}: {err}", path.display());
+            return GrenadeList::default();
+        }
+    };
+    match serde_json::from_str(&grenade_list_file) {
+        Ok(list) => list,
+        Err(err) => {
+            log::warn!("grenade list file invalid: {err}");
+            GrenadeList::default()
+        }
     }
-    grenade_list.unwrap_or_default()
 }
 
 pub fn write_grenades(grenades: &GrenadeList) {
-    let out = serde_json::to_string(grenades).unwrap();
+    let out = match serde_json::to_string(grenades) {
+        Ok(out) => out,
+        Err(err) => {
+            log::warn!("failed to serialize grenade list: {err}");
+            return;
+        }
+    };
     let path = BASE_PATH.join(GRENADE_FILE_NAME);
-    std::fs::write(path, out).unwrap();
+    if let Err(err) = std::fs::write(&path, out) {
+        log::warn!("failed to write grenade list file {}: {err}", path.display());
+    }
 }

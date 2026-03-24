@@ -75,3 +75,24 @@ impl WeaponClass {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::WeaponClass;
+
+    #[test]
+    fn classifies_knife() {
+        assert_eq!(WeaponClass::from_string("knife_karambit"), WeaponClass::Knife);
+    }
+
+    #[test]
+    fn classifies_grenade() {
+        assert_eq!(WeaponClass::from_string("flashbang"), WeaponClass::Grenade);
+    }
+
+    #[test]
+    fn classifies_rifle_and_unknown() {
+        assert_eq!(WeaponClass::from_string("ak47"), WeaponClass::Rifle);
+        assert_eq!(WeaponClass::from_string("nonexistent_weapon"), WeaponClass::Unknown);
+    }
+}

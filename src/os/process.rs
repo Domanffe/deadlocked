@@ -5,6 +5,7 @@ use std::{
     io::{BufRead, BufReader},
     os::unix::fs::FileExt,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use bytemuck::Pod;
@@ -26,13 +27,57 @@ thread_local! {
     static STRING_CACHE: RefCell<HashMap<u64, String>> = RefCell::new(HashMap::new());
 }
 
+static VM_READ_FAILURES: AtomicU64 = AtomicU64::new(0);
+static VM_WRITE_FAILURES: AtomicU64 = AtomicU64::new(0);
+
+fn log_vm_read_failure(actual: isize, expected: usize) {
+    let n = VM_READ_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+    if n <= 5 || n.is_multiple_of(1000) {
+        if actual == -1 {
+            log::debug!(
+                "process_vm_readv returned {actual}, expected {expected} bytes (count={n})"
+            );
+        } else {
+            log::warn!(
+                "process_vm_readv returned {actual}, expected {expected} bytes (count={n})"
+            );
+        }
+    }
+}
+
+fn log_vm_write_failure(actual: isize, expected: usize) {
+    let n = VM_WRITE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+    if n <= 5 || n.is_multiple_of(1000) {
+        if actual == -1 {
+            log::debug!(
+                "process_vm_writev returned {actual}, expected {expected} bytes (count={n})"
+            );
+        } else {
+            log::warn!(
+                "process_vm_writev returned {actual}, expected {expected} bytes (count={n})"
+            );
+        }
+    }
+}
+
+fn open_fallback_file() -> File {
+    if let Ok(file) = OpenOptions::new().read(true).open("/dev/null") {
+        return file;
+    }
+    if let Ok(file) = OpenOptions::new().read(true).open("/proc/self/maps") {
+        return file;
+    }
+    log::error!("failed to open fallback file descriptors");
+    std::process::exit(1);
+}
+
 impl Process {
     pub fn new(pid: i32) -> Self {
         if pid == -1 {
             return Self {
                 pid,
                 path: PathBuf::from(format!("/proc/{pid}")),
-                file: OpenOptions::new().read(true).open("/dev/null").unwrap(),
+                file: open_fallback_file(),
                 min: u64::MAX,
                 max: u64::MIN,
             };
@@ -43,7 +88,7 @@ impl Process {
             .open(format!("/proc/{pid}/mem"))
             .unwrap_or_else(|e| {
                 log::error!("failed to open /proc/{pid}/mem: {e}");
-                OpenOptions::new().read(true).open("/dev/null").unwrap()
+                open_fallback_file()
             });
         let mut ret = Self {
             pid,
@@ -90,8 +135,10 @@ impl Process {
             iov_len: buffer.len(),
         };
 
-        unsafe {
-            process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0);
+        let read = unsafe { process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        if read != buffer.len() as isize {
+            log_vm_read_failure(read, buffer.len());
+            t = T::default();
         }
 
         t
@@ -110,8 +157,10 @@ impl Process {
             iov_len: buffer.len(),
         };
 
-        unsafe {
-            process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0);
+        let read = unsafe { process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        if read != buffer.len() as isize {
+            log_vm_read_failure(read, buffer.len());
+            t = T::zeroed();
         }
 
         t
@@ -129,8 +178,9 @@ impl Process {
             iov_len: buffer.len(),
         };
 
-        unsafe {
-            process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0);
+        let read = unsafe { process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        if read != buffer.len() as isize {
+            log_vm_read_failure(read, buffer.len());
         }
 
         buffer
@@ -157,8 +207,9 @@ impl Process {
             iov_len: buffer.len(),
         };
 
-        unsafe {
-            process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0);
+        let read = unsafe { process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        if read != buffer.len() as isize {
+            log_vm_read_failure(read, buffer.len());
         }
 
         let mut result = vec![T::default(); count];
@@ -190,7 +241,8 @@ impl Process {
             });
         }
 
-        unsafe {
+        let expected: usize = local_iovs.iter().map(|iov| iov.iov_len).sum();
+        let read = unsafe {
             process_vm_readv(
                 self.pid,
                 local_iovs.as_ptr(),
@@ -198,7 +250,10 @@ impl Process {
                 remote_iovs.as_ptr(),
                 remote_iovs.len() as libc::c_ulong,
                 0,
-            );
+            )
+        };
+        if read != expected as isize {
+            log_vm_read_failure(read, expected);
         }
     }
 }
@@ -253,7 +308,11 @@ impl Process {
             iov_len: buffer.len(),
         };
 
-        unsafe { nix::libc::process_vm_writev(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        let written =
+            unsafe { nix::libc::process_vm_writev(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
+        if written != buffer.len() as isize {
+            log_vm_write_failure(written, buffer.len());
+        }
     }
 
     pub fn read_string(&self, address: u64) -> String {
@@ -306,7 +365,7 @@ impl Process {
             log::debug!("found module {module_name} at {address:X}");
             return Some(address);
         }
-        log::warn!("module {module_name} not found");
+        log::debug!("module {module_name} not found");
         None
     }
 

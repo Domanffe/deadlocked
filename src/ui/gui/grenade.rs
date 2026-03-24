@@ -161,13 +161,20 @@ impl App {
     }
 
     fn edit_grenade(&mut self, ui: &mut Ui, lang: Language) {
-        let (map, index) = self.current_grenade.as_ref().unwrap();
+        let Some((map, index)) = self.current_grenade.as_ref() else {
+            return;
+        };
         let map = map.clone();
         let index = *index;
 
         section(ui, Trans::get(lang, "edit_lineup"), None, |ui| {
             let mut grenades = self.grenades.lock();
-            let grenade = &mut grenades.get_mut(&map).unwrap()[index];
+            let Some(map_grenades) = grenades.get_mut(&map) else {
+                return;
+            };
+            let Some(grenade) = map_grenades.get_mut(index) else {
+                return;
+            };
 
             ui.label(format!("{}:", Trans::get(lang, "name")));
             ui.text_edit_singleline(&mut grenade.name);

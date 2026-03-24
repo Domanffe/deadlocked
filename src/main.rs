@@ -48,9 +48,23 @@ fn main() {
     let force_reparse = args.iter().any(|arg| arg == "--force-reparse");
     let use_system_binary = args.iter().any(|arg| arg == "--local-s2v");
     let force_x11 = args.iter().any(|arg| arg == "--x11");
+    let force_wayland = args.iter().any(|arg| arg == "--wayland");
 
-    if force_x11 {
+    let wayland_available = std::env::var("WAYLAND_DISPLAY").is_ok();
+    let x11_available = std::env::var("DISPLAY").is_ok();
+    let auto_x11_fallback = !force_wayland && wayland_available && x11_available;
+
+    if force_x11 || auto_x11_fallback {
         unsafe { std::env::remove_var("WAYLAND_DISPLAY") };
+        if auto_x11_fallback && !force_x11 {
+            log::info!(
+                "wayland detected; using x11/xwayland backend for reliable overlay positioning (pass --wayland to disable)"
+            );
+        }
+    } else if wayland_available && !x11_available {
+        log::info!(
+            "running on native wayland backend; compositor may ignore absolute window positioning"
+        );
     }
     spawn_with_crash_handler(move || {
         parse_maps(force_reparse, use_system_binary);
@@ -82,7 +96,9 @@ fn main() {
     };
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
     let mut app = App::new(tx, rx_gui, data, grenades);
-    event_loop.run_app(&mut app).unwrap();
+    if let Err(err) = event_loop.run_app(&mut app) {
+        log::error!("event loop failed: {err}");
+    }
 }
 
 fn spawn_with_crash_handler<F>(f: F)

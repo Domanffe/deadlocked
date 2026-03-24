@@ -264,7 +264,9 @@ impl App {
         let mut delete = None;
 
         for config in &self.available_configs {
-            let name = config.file_name().unwrap().to_str().unwrap();
+            let Some(name) = config.file_name().and_then(|name| name.to_str()) else {
+                continue;
+            };
             let is_active = *config == self.current_config;
 
             ui.horizontal(|ui| {

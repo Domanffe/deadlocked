@@ -72,12 +72,17 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
             continue;
         };
 
-        if !file.file_type().unwrap().is_file() {
+        let Ok(file_type) = file.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
             continue;
         }
 
         let file_name = file.file_name();
-        let file_name = file_name.to_str().unwrap();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
         if file_name.contains("_vanity") {
             continue;
         }
@@ -124,10 +129,10 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         });
         s2v_cmd.args([
             "-i",
-            path.to_str().unwrap(),
+            path.to_string_lossy().as_ref(),
             "-d",
             "-o",
-            geom_dir.to_str().unwrap(),
+            geom_dir.to_string_lossy().as_ref(),
             "-f",
             &format!("maps/{map_name}/world_physics.vmdl_c"),
         ]);
@@ -201,7 +206,9 @@ fn parse_map(map: &str, maps_dir: &Path, force_reparse: bool) {
             continue;
         };
         let file_name = file.file_name();
-        let file_name = file_name.to_str().unwrap();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
         let file_type = if file_name.contains("world_physics_hull") {
             FileType::Hull
         } else if file_name.contains("world_physics_phys") {
@@ -325,10 +332,8 @@ fn parse_dmx(reader: &mut impl Read) -> HashMap<String, Element> {
             let value = match kind {
                 1 => AT::Element({
                     let index: i32 = read(reader);
-                    if index == -1 {
+                    if index < 0 {
                         None
-                    } else if index == -2 {
-                        panic!();
                     } else {
                         Some(index)
                     }
@@ -359,7 +364,7 @@ fn parse_dmx(reader: &mut impl Read) -> HashMap<String, Element> {
                             let idx: i32 = read(reader);
                             match idx {
                                 -1 => None,
-                                -2 => panic!("Invalid Element index in array"),
+                                -2 => None,
                                 x => Some(x),
                             }
                         })
@@ -381,7 +386,7 @@ fn parse_dmx(reader: &mut impl Read) -> HashMap<String, Element> {
                     let count: i32 = read(reader);
                     (0..count).map(|_| read_string(reader)).collect()
                 }),
-                38 => panic!(),
+                38 => AT::ByteArray(Vec::new()),
                 39 => AT::TimeSpanArray({
                     let count: i32 = read(reader);
                     (0..count).map(|_| read(reader)).collect()
@@ -424,7 +429,7 @@ fn parse_dmx(reader: &mut impl Read) -> HashMap<String, Element> {
                     (0..count).map(|_| read(reader)).collect()
                 }),
 
-                _ => panic!(),
+                _ => AT::ByteArray(Vec::new()),
             };
             element.add(name.to_string(), value);
         }
@@ -528,7 +533,7 @@ fn game_dir() -> Result<PathBuf, String> {
         .lines()
         .filter_map(|line| {
             if line.contains("\"path\"") {
-                Some(line.rsplit('"').nth(1).unwrap())
+                line.rsplit('"').nth(1)
             } else {
                 None
             }
@@ -556,15 +561,17 @@ fn maps_dir() -> Result<PathBuf, String> {
 
 fn exe_path() -> PathBuf {
     std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 fn read<T: AnyBitPattern + Default>(reader: &mut impl Read) -> T {
     let mut buffer = vec![0u8; size_of::<T>()];
-    reader.read_exact(&mut buffer).unwrap();
+    if reader.read_exact(&mut buffer).is_err() {
+        return T::default();
+    }
     *bytemuck::from_bytes(&buffer)
 }
 
@@ -573,18 +580,20 @@ fn read_string(reader: &mut impl Read) -> String {
     let mut byte = [0u8; 1];
 
     loop {
-        reader.read_exact(&mut byte).unwrap();
+        if reader.read_exact(&mut byte).is_err() {
+            break;
+        }
         if byte[0] == 0 {
             break;
         }
         buffer.push(byte[0]);
     }
-    String::from_utf8(buffer).unwrap()
+    String::from_utf8(buffer).unwrap_or_default()
 }
 
 fn read_bytes(reader: &mut impl Read, count: usize) -> Vec<u8> {
     let mut buf = vec![0u8; count];
-    reader.read_exact(&mut buf).unwrap();
+    let _ = reader.read_exact(&mut buf);
     buf
 }
 

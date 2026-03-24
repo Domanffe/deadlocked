@@ -64,18 +64,22 @@ impl GameManager {
         game
     }
 
-    fn send_game_message(&self, message: Message) {
+    fn send_game_message(&self, message: Message) -> bool {
         let envelope = Envelope {
             target: Target::Gui,
             message,
         };
         if self.tx.send(envelope).is_err() {
-            std::process::exit(1);
+            log::warn!("failed to send game message to gui; stopping game loop");
+            return false;
         }
+        true
     }
 
     pub fn run(&mut self) {
-        self.send_game_message(Message::GameStatus(GameStatus::NotStarted));
+        if !self.send_game_message(Message::GameStatus(GameStatus::NotStarted)) {
+            return;
+        }
         let mut previous_status = GameStatus::NotStarted;
         loop {
             let start = Instant::now();
@@ -86,7 +90,9 @@ impl GameManager {
             let mut is_valid = self.game.is_valid();
             if !is_valid {
                 if previous_status == GameStatus::Working {
-                    self.send_game_message(Message::GameStatus(GameStatus::NotStarted));
+                    if !self.send_game_message(Message::GameStatus(GameStatus::NotStarted)) {
+                        break;
+                    }
                     previous_status = GameStatus::NotStarted;
                 }
                 self.game.setup();
@@ -95,7 +101,9 @@ impl GameManager {
 
             if is_valid {
                 if previous_status == GameStatus::NotStarted {
-                    self.send_game_message(Message::GameStatus(GameStatus::Working));
+                    if !self.send_game_message(Message::GameStatus(GameStatus::Working)) {
+                        break;
+                    }
                     previous_status = GameStatus::Working;
                 }
                 self.game.run(&self.config, &mut self.mouse);

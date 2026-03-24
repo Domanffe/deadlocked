@@ -147,7 +147,12 @@ impl App {
                 _ => continue,
             };
             if let Some(trail) = self.trails.get_mut(&entity_id) {
-                if (position - *trail.trail.last().unwrap()).length() < 1.0 {
+                let Some(last) = trail.trail.last() else {
+                    trail.trail.push(position);
+                    trail.last_update = Instant::now();
+                    continue;
+                };
+                if (position - *last).length() < 1.0 {
                     continue;
                 }
                 trail.trail.push(position);

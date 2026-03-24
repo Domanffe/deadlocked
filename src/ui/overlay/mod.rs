@@ -1,12 +1,12 @@
 use egui::{Align2, Color32, Context, Painter, Pos2, Shape, Stroke, pos2};
-use glam::{Vec3, vec3};
+use glam::{Vec2, Vec3, vec3};
 
 use crate::{
     config::AimbotConfig,
     cs2::entity::weapon::Weapon,
     data::Data,
     math::world_to_screen,
-    ui::{app::App, grenades::Grenade},
+    ui::{app::App, grenades::Grenade, window_context::WindowContext},
 };
 
 mod entity;
@@ -31,8 +31,8 @@ impl App {
         self.update_trails();
         let data = &self.data.read();
 
-        self.update_window(data);
-        if !data.is_focused {
+        // Fail-open policy: keep rendering in-game even if focus signal is transiently false.
+        if !data.in_game && !data.is_focused {
             return;
         }
 
@@ -95,22 +95,41 @@ impl App {
         self.grenade_manager(data, &painter);
     }
 
-    fn update_window(&self, data: &Data) {
-        let Some(window) = &self.overlay else {
-            return;
+    pub(crate) fn update_window(&self, window: &WindowContext, data: &Data) {
+        let current_size = window.window().inner_size();
+        let fallback_size = Vec2::new(current_size.width as f32, current_size.height as f32);
+
+        let target_size = if data.window_size.x > 64.0 && data.window_size.y > 64.0 {
+            data.window_size
+        } else if fallback_size.x > 1.0 && fallback_size.y > 1.0 {
+            fallback_size
+        } else {
+            Vec2::new(1920.0, 1080.0)
+        };
+
+        let position_sane = data.window_position.x.is_finite()
+            && data.window_position.y.is_finite()
+            && data.window_position.x.abs() < 20_000.0
+            && data.window_position.y.abs() < 20_000.0;
+        let target_position = if position_sane {
+            data.window_position
+        } else if let Ok(position) = window.window().outer_position() {
+            Vec2::new(position.x as f32, position.y as f32)
+        } else {
+            Vec2::ZERO
         };
 
         window
             .window()
             .set_outer_position(winit::dpi::PhysicalPosition::new(
-                data.window_position.x,
-                data.window_position.y,
+                target_position.x,
+                target_position.y,
             ));
         let _ = window
             .window()
             .request_inner_size(winit::dpi::PhysicalSize::new(
-                data.window_size.x.max(1.0),
-                data.window_size.y.max(1.0),
+                target_size.x.max(1.0),
+                target_size.y.max(1.0),
             ));
     }
 

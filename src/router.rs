@@ -10,7 +10,8 @@ pub fn router(rx: Receiver<Envelope>, tx_gui: Sender<Message>, tx_game: Sender<M
         }
         .is_err()
         {
-            std::process::exit(1);
+            utils::log::warn!("router channel closed; stopping router thread");
+            break;
         }
     }
 }

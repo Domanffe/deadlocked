@@ -96,9 +96,14 @@ impl CS2 {
         let mean = (*config.delay.start() + *config.delay.end()) as f32 / 2.0;
         let std_dev = (*config.delay.end() - *config.delay.start()) as f32 / 2.0;
 
-        let normal = rand_distr::Normal::new(mean, std_dev).unwrap();
         use rand_distr::Distribution as _;
-        let delay = normal.sample(&mut rng()).max(0.0) as u64;
+        let delay = if std_dev <= f32::EPSILON {
+            mean.max(0.0) as u64
+        } else if let Ok(normal) = rand_distr::Normal::new(mean, std_dev) {
+            normal.sample(&mut rng()).max(0.0) as u64
+        } else {
+            mean.max(0.0) as u64
+        };
 
         let now = Instant::now();
         let delay = Duration::from_millis(delay);
