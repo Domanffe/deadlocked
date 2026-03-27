@@ -276,7 +276,7 @@ impl App {
                             .clicked()
                         {
                             self.config.accent_color = color;
-                            ctx.style_mut(|style| style.visuals.selection.bg_fill = color);
+                            ctx.global_style_mut(|style| style.visuals.selection.bg_fill = color);
                             self.active_preset = None;
                             self.send_message(
                                 Message::Config(Box::new(self.config.clone())),
@@ -434,7 +434,7 @@ impl App {
             self.current_config = config_path;
             self.send_config();
             ui.ctx()
-                .style_mut(|style| style.visuals.selection.bg_fill = self.config.accent_color);
+                .global_style_mut(|style| style.visuals.selection.bg_fill = self.config.accent_color);
         }
 
         if let Some(config) = delete {

@@ -178,6 +178,15 @@ impl ApplicationHandler for App {
 
         match &window_event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                self.display_scale = (*scale_factor as f32).clamp(0.75, 2.5);
+                if let Some(gui) = &self.gui {
+                    gui.request_redraw();
+                }
+                if let Some(overlay) = &self.overlay {
+                    overlay.request_redraw();
+                }
+            }
             WindowEvent::Resized(new_size) => {
                 match target {
                     WindowTarget::Gui => {

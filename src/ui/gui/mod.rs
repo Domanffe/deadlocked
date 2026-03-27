@@ -1,4 +1,4 @@
-use egui::{Align, Context};
+use egui::{Align, Ui};
 use utils::log;
 
 use crate::{
@@ -19,7 +19,7 @@ mod r#unsafe;
 
 use crate::ui::gui::translations::Trans;
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     Aimbot,
     Player,
@@ -31,6 +31,18 @@ pub enum Tab {
 }
 
 impl App {
+    fn tab_index(tab: Tab) -> f32 {
+        match tab {
+            Tab::Aimbot => 0.0,
+            Tab::Player => 1.0,
+            Tab::Hud => 2.0,
+            Tab::Radar => 3.0,
+            Tab::Grenades => 4.0,
+            Tab::Unsafe => 5.0,
+            Tab::Config => 6.0,
+        }
+    }
+
     pub fn t(&self, key: &str) -> &'static str {
         Trans::get(self.config.language, key)
     }
@@ -51,14 +63,16 @@ impl App {
         write_config(&self.config, &self.current_config);
     }
 
-    fn gui(&mut self, ctx: &Context) {
-        ctx.set_pixels_per_point(self.display_scale);
+    fn gui(&mut self, ui: &mut Ui) {
+        let ctx = ui.ctx().clone();
+        ctx.set_pixels_per_point(self.display_scale.clamp(0.75, 2.5));
 
-        let mut style = (*ctx.style()).clone();
-        style.spacing.item_spacing = egui::vec2(10.0, 10.0);
-        style.spacing.window_margin = egui::Margin::same(14);
-        style.spacing.button_padding = egui::vec2(12.0, 8.0);
-        style.spacing.indent = 14.0;
+        let mut style = (*ctx.global_style()).clone();
+        style.spacing.item_spacing = egui::vec2(12.0, 12.0);
+        style.spacing.window_margin = egui::Margin::same(16);
+        style.spacing.button_padding = egui::vec2(12.0, 10.0);
+        style.spacing.indent = 16.0;
+        style.spacing.interact_size = egui::vec2(120.0, 32.0);
 
         let widget_radius = egui::CornerRadius::same(8);
         style.visuals.widgets.noninteractive.corner_radius = widget_radius;
@@ -87,28 +101,30 @@ impl App {
         style.visuals.widgets.hovered.bg_stroke =
             egui::Stroke::new(1.0, self.config.accent_color.linear_multiply(0.7));
         style.visuals.widgets.hovered.fg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
+        style.visuals.widgets.hovered.expansion = 0.5;
 
         style.visuals.widgets.active.bg_fill = self.config.accent_color.linear_multiply(0.28);
         style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.2, self.config.accent_color);
         style.visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0, Colors::WHITE);
+        style.visuals.widgets.active.expansion = 1.0;
 
         style.visuals.selection.bg_fill = self.config.accent_color.linear_multiply(0.36);
         style.visuals.selection.stroke = egui::Stroke::new(1.0, self.config.accent_color);
         style.visuals.window_shadow.color = egui::Color32::from_black_alpha(175);
         style.visuals.window_shadow.spread = 10;
 
-        ctx.set_style(style);
+        ctx.set_global_style(style);
 
-        egui::SidePanel::left("sidebar")
+        egui::Panel::left("sidebar")
             .resizable(false)
-            .default_width(188.0)
+            .default_size(188.0)
             .frame(
                 egui::Frame::NONE
-                    .fill(Colors::BACKDROP)
+                    .fill(egui::Color32::from_rgba_premultiplied(10, 10, 10, 246))
                     .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
-                    .inner_margin(egui::Margin::same(12)),
+                    .inner_margin(egui::Margin::same(16)),
             )
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 let stripe_rect = egui::Rect::from_min_size(
                     ui.min_rect().left_top(),
                     egui::vec2(ui.available_width(), 2.0),
@@ -117,14 +133,14 @@ impl App {
                     .rect_filled(stripe_rect, 0.0, self.config.accent_color);
 
                 ui.vertical_centered(|ui| {
-                    ui.add_space(14.0);
+                    ui.add_space(16.0);
                     ui.heading(
                         egui::RichText::new("DEADLOCKED // 4.7")
                             .strong()
                             .color(self.config.accent_color)
                             .size(20.0),
                     );
-                    ui.add_space(14.0);
+                    ui.add_space(16.0);
                 });
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
@@ -138,7 +154,7 @@ impl App {
                 });
 
                 ui.with_layout(egui::Layout::bottom_up(Align::Center), |ui| {
-                    ui.add_space(10.0);
+                    ui.add_space(12.0);
                     if ui
                         .button(egui::RichText::new(self.t("report_issue")).small())
                         .clicked()
@@ -146,7 +162,7 @@ impl App {
                         self.open_path("https://github.com/Domanffe/deadlocked/issues");
                     }
 
-                    ui.add_space(10.0);
+                    ui.add_space(12.0);
                     let (status_text, status_color) = match self.game_status {
                         GameStatus::Working => (self.t("system_active"), Colors::GREEN),
                         GameStatus::NotStarted => (self.t("waiting_game"), Colors::YELLOW),
@@ -169,19 +185,31 @@ impl App {
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::NONE
-                    .fill(Colors::BASE)
+                    .fill(egui::Color32::from_rgba_premultiplied(17, 17, 17, 246))
                     .stroke(egui::Stroke::new(1.0, Colors::HIGHLIGHT))
-                    .inner_margin(egui::Margin::same(18)),
+                    .inner_margin(egui::Margin::same(16)),
             )
-            .show(ctx, |ui| {
-                ui.vertical(|ui| match self.current_tab {
-                    Tab::Aimbot => self.aimbot_settings(ui),
-                    Tab::Player => self.player_settings(ui),
-                    Tab::Hud => self.hud_settings(ui),
-                    Tab::Radar => self.radar_settings(ui),
-                    Tab::Grenades => self.grenade_settings(ui),
-                    Tab::Unsafe => self.unsafe_settings(ui),
-                    Tab::Config => self.config_settings(ui, ctx),
+            .show_inside(ui, |ui| {
+                let target_tab = Self::tab_index(self.current_tab);
+                let animated_tab =
+                    ctx.animate_value_with_time(egui::Id::new("gui_tab_transition"), target_tab, 0.16);
+                let transition = (1.0 - (target_tab - animated_tab).abs()).clamp(0.0, 1.0);
+                let slide_offset = (1.0 - transition) * 10.0;
+                let text_alpha = (0.82 + 0.18 * transition).clamp(0.0, 1.0);
+
+                ui.add_space(slide_offset);
+                ui.scope(|ui| {
+                    ui.style_mut().visuals.override_text_color =
+                        Some(Colors::TEXT.linear_multiply(text_alpha));
+                    ui.vertical(|ui| match self.current_tab {
+                        Tab::Aimbot => self.aimbot_settings(ui),
+                        Tab::Player => self.player_settings(ui),
+                        Tab::Hud => self.hud_settings(ui),
+                        Tab::Radar => self.radar_settings(ui),
+                        Tab::Grenades => self.grenade_settings(ui),
+                        Tab::Unsafe => self.unsafe_settings(ui),
+                        Tab::Config => self.config_settings(ui, &ctx),
+                    });
                 });
             });
     }
@@ -255,10 +283,24 @@ impl App {
             })
             .min_size(egui::vec2(164.0, 36.0));
 
-        if ui.add(button).clicked() {
+        let response = ui.add(button);
+
+        let hover_t =
+            ui.ctx()
+                .animate_bool_with_time(ui.id().with(("sidebar_hover", label)), response.hovered(), 0.12);
+        if hover_t > 0.0 {
+            ui.painter().rect_stroke(
+                response.rect.expand(0.5),
+                egui::CornerRadius::same(8),
+                egui::Stroke::new(1.0, self.config.accent_color.linear_multiply(0.35 * hover_t)),
+                egui::StrokeKind::Outside,
+            );
+        }
+
+        if response.clicked() {
             self.current_tab = tab;
         }
-        ui.add_space(2.0); // Spacing between buttons
+        ui.add_space(4.0); // Spacing between buttons
     }
 
     fn weapon_config(&mut self) -> &mut WeaponConfig {
@@ -283,7 +325,7 @@ impl App {
             self.gui = Some(gui);
             return;
         }
-        gui.run(|ctx| self.gui(ctx));
+        gui.run(|ui| self.gui(ui));
         gui.clear();
         gui.paint();
 
@@ -313,7 +355,7 @@ impl App {
             self.update_window(&overlay, &data);
         }
 
-        overlay.run(|egui_ctx| self.overlay(egui_ctx));
+        overlay.run(|ui| self.overlay(ui.ctx()));
         overlay.clear();
         overlay.paint();
 

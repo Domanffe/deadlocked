@@ -214,7 +214,7 @@ impl WindowContext {
         self.window.request_redraw();
     }
 
-    pub fn run(&mut self, func: impl FnMut(&egui::Context)) {
+    pub fn run(&mut self, func: impl FnMut(&mut egui::Ui)) {
         self.egui_glow.run(&self.window, func);
     }
 
