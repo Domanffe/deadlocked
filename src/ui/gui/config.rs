@@ -52,7 +52,8 @@ impl App {
                             ui.add_space(6.0);
                             ui.horizontal(|ui| {
                                 let button_width = 92.0;
-                                let input_width = (ui.available_width() - button_width - 8.0).max(120.0);
+                                let input_width =
+                                    (ui.available_width() - button_width - 8.0).max(120.0);
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.new_config_name)
                                         .hint_text("profile.toml")
@@ -62,7 +63,10 @@ impl App {
                                     .add(
                                         Button::new(egui::RichText::new(create_text).strong())
                                             .fill(self.config.accent_color.linear_multiply(0.24))
-                                            .stroke(egui::Stroke::new(1.0, self.config.accent_color))
+                                            .stroke(egui::Stroke::new(
+                                                1.0,
+                                                self.config.accent_color,
+                                            ))
                                             .min_size(egui::vec2(button_width, 32.0)),
                                     )
                                     .clicked()
@@ -87,7 +91,8 @@ impl App {
 
                                 ui.add_space(4.0);
                                 let button_width = 92.0;
-                                let input_width = (ui.available_width() - button_width - 8.0).max(120.0);
+                                let input_width =
+                                    (ui.available_width() - button_width - 8.0).max(120.0);
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.new_config_name)
                                         .hint_text("profile.toml")
@@ -97,7 +102,10 @@ impl App {
                                     .add(
                                         Button::new(egui::RichText::new(create_text).strong())
                                             .fill(self.config.accent_color.linear_multiply(0.24))
-                                            .stroke(egui::Stroke::new(1.0, self.config.accent_color))
+                                            .stroke(egui::Stroke::new(
+                                                1.0,
+                                                self.config.accent_color,
+                                            ))
                                             .min_size(egui::vec2(button_width, 32.0)),
                                     )
                                     .clicked()
@@ -433,8 +441,9 @@ impl App {
             self.config = parse_config(&config_path);
             self.current_config = config_path;
             self.send_config();
-            ui.ctx()
-                .global_style_mut(|style| style.visuals.selection.bg_fill = self.config.accent_color);
+            ui.ctx().global_style_mut(|style| {
+                style.visuals.selection.bg_fill = self.config.accent_color
+            });
         }
 
         if let Some(config) = delete {

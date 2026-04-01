@@ -191,8 +191,11 @@ impl App {
             )
             .show_inside(ui, |ui| {
                 let target_tab = Self::tab_index(self.current_tab);
-                let animated_tab =
-                    ctx.animate_value_with_time(egui::Id::new("gui_tab_transition"), target_tab, 0.16);
+                let animated_tab = ctx.animate_value_with_time(
+                    egui::Id::new("gui_tab_transition"),
+                    target_tab,
+                    0.16,
+                );
                 let transition = (1.0 - (target_tab - animated_tab).abs()).clamp(0.0, 1.0);
                 let slide_offset = (1.0 - transition) * 10.0;
                 let text_alpha = (0.82 + 0.18 * transition).clamp(0.0, 1.0);
@@ -242,7 +245,10 @@ impl App {
                 let runtime = format!("/run/user/{}", sudo_uid);
                 if std::path::Path::new(&runtime).exists() {
                     cmd.arg(format!("XDG_RUNTIME_DIR={}", runtime));
-                    cmd.arg(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus", runtime));
+                    cmd.arg(format!(
+                        "DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus",
+                        runtime
+                    ));
                 }
             }
 
@@ -285,14 +291,19 @@ impl App {
 
         let response = ui.add(button);
 
-        let hover_t =
-            ui.ctx()
-                .animate_bool_with_time(ui.id().with(("sidebar_hover", label)), response.hovered(), 0.12);
+        let hover_t = ui.ctx().animate_bool_with_time(
+            ui.id().with(("sidebar_hover", label)),
+            response.hovered(),
+            0.12,
+        );
         if hover_t > 0.0 {
             ui.painter().rect_stroke(
                 response.rect.expand(0.5),
                 egui::CornerRadius::same(8),
-                egui::Stroke::new(1.0, self.config.accent_color.linear_multiply(0.35 * hover_t)),
+                egui::Stroke::new(
+                    1.0,
+                    self.config.accent_color.linear_multiply(0.35 * hover_t),
+                ),
                 egui::StrokeKind::Outside,
             );
         }

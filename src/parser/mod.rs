@@ -4,6 +4,10 @@ use std::{
     io::{BufReader, Read, Write as _},
     path::{Path, PathBuf},
     process::Command,
+    sync::{
+        LazyLock, Mutex,
+        atomic::{AtomicU8, AtomicUsize, Ordering},
+    },
 };
 
 use bytemuck::AnyBitPattern;
@@ -17,11 +21,73 @@ use crate::{
 
 pub mod bvh;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParserState {
+    Idle,
+    Parsing,
+    Ready,
+    Failed,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParserStatus {
+    pub state: ParserState,
+    pub parsed_maps: usize,
+    pub total_maps: usize,
+    pub current_map: String,
+}
+
+static PARSER_STATE: AtomicU8 = AtomicU8::new(0);
+static PARSED_MAPS: AtomicUsize = AtomicUsize::new(0);
+static TOTAL_MAPS: AtomicUsize = AtomicUsize::new(0);
+static CURRENT_MAP: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+
+fn set_parser_state(state: ParserState) {
+    let v = match state {
+        ParserState::Idle => 0,
+        ParserState::Parsing => 1,
+        ParserState::Ready => 2,
+        ParserState::Failed => 3,
+    };
+    PARSER_STATE.store(v, Ordering::Relaxed);
+}
+
+fn set_current_map(name: &str) {
+    if let Ok(mut current) = CURRENT_MAP.lock() {
+        *current = name.to_string();
+    }
+}
+
+pub fn parser_status() -> ParserStatus {
+    let state = match PARSER_STATE.load(Ordering::Relaxed) {
+        1 => ParserState::Parsing,
+        2 => ParserState::Ready,
+        3 => ParserState::Failed,
+        _ => ParserState::Idle,
+    };
+    let current_map = CURRENT_MAP
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_else(|_| String::new());
+    ParserStatus {
+        state,
+        parsed_maps: PARSED_MAPS.load(Ordering::Relaxed),
+        total_maps: TOTAL_MAPS.load(Ordering::Relaxed),
+        current_map,
+    }
+}
+
 pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
+    set_parser_state(ParserState::Parsing);
+    PARSED_MAPS.store(0, Ordering::Relaxed);
+    TOTAL_MAPS.store(0, Ordering::Relaxed);
+    set_current_map("");
+
     crash::info();
     let source2viewer = exe_path().join("source2viewer/Source2Viewer-CLI");
     if !source2viewer.exists() && !use_system_binary {
         log::warn!("could not find source2viewer binary");
+        set_parser_state(ParserState::Failed);
         return;
     }
 
@@ -29,12 +95,14 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         Ok(dir) => dir,
         Err(err) => {
             log::warn!("could not find cs2 game directory: {err}");
+            set_parser_state(ParserState::Failed);
             return;
         }
     };
     let build_file = game_dir.join("game/bin/built_from_cl.txt");
     let Ok(cs2_build_raw) = std::fs::read_to_string(&build_file) else {
         log::warn!("could not read cs2 build number");
+        set_parser_state(ParserState::Failed);
         return;
     };
     let cs2_build = cs2_build_raw.trim();
@@ -44,6 +112,7 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         Ok(dir) => dir,
         Err(err) => {
             log::error!("could not find cs2 maps directory: {err}");
+            set_parser_state(ParserState::Failed);
             return;
         }
     };
@@ -64,6 +133,7 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         Ok(dir) => dir,
         Err(err) => {
             log::error!("could not read cs2 maps dir: {err}");
+            set_parser_state(ParserState::Failed);
             return;
         }
     };
@@ -143,6 +213,22 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
 
     if !geom_dir.exists() {
         log::warn!("could not parse any map successfully");
+        set_parser_state(ParserState::Failed);
+        return;
+    }
+
+    let pending_maps: Vec<String> = files
+        .iter()
+        .filter(|file| {
+            let map_name = file.trim_end_matches(".vpk");
+            force_reparse || !maps_dir.join(format!("{map_name}.bvh")).exists()
+        })
+        .cloned()
+        .collect();
+
+    TOTAL_MAPS.store(pending_maps.len(), Ordering::Relaxed);
+    if pending_maps.is_empty() {
+        set_parser_state(ParserState::Ready);
         return;
     }
 
@@ -150,13 +236,15 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         .map(|n| n.get())
         .unwrap_or(1);
     let batch_size = (cpus / 2).max(1);
-    for chunk in files.chunks(batch_size) {
+    for chunk in pending_maps.chunks(batch_size) {
         let mut threads = Vec::with_capacity(batch_size);
         for map in chunk {
             let map = map.clone();
             let maps_dir = maps_dir.clone();
             let thread = std::thread::spawn(move || {
+                set_current_map(&map);
                 parse_map(&map, &maps_dir, force_reparse);
+                PARSED_MAPS.fetch_add(1, Ordering::Relaxed);
             });
             threads.push(thread);
         }
@@ -169,12 +257,17 @@ pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
         Ok(file) => file,
         Err(err) => {
             log::error!("could not open metadata file: {err}");
+            set_parser_state(ParserState::Failed);
             return;
         }
     };
     if let Err(err) = parsed_build_file.write_all(format!("{cs2_build}").as_bytes()) {
         log::error!("could not write to metadata file: {err}");
+        set_parser_state(ParserState::Failed);
+        return;
     }
+    set_current_map("");
+    set_parser_state(ParserState::Ready);
     log::info!("loaded map info");
 }
 
@@ -332,11 +425,7 @@ fn parse_dmx(reader: &mut impl Read) -> HashMap<String, Element> {
             let value = match kind {
                 1 => AT::Element({
                     let index: i32 = read(reader);
-                    if index < 0 {
-                        None
-                    } else {
-                        Some(index)
-                    }
+                    if index < 0 { None } else { Some(index) }
                 }),
                 2 => AT::Integer(read(reader)),
                 3 => AT::Float(read(reader)),

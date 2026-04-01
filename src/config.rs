@@ -77,6 +77,14 @@ impl Config {
                 self.aim.global.aimbot.hitchance = 60.0;
                 self.aim.global.aimbot.backtrack = false;
                 self.aim.global.aimbot.multipoint = false;
+                self.aim.global.aimbot.target_stickiness = true;
+                self.aim.global.aimbot.stickiness_grace_ms = 220;
+                self.aim.global.aimbot.stickiness_strength = 0.35;
+                self.aim.global.aimbot.adaptive_smoothing = true;
+                self.aim.global.aimbot.adaptive_smoothing_strength = 0.65;
+                self.aim.global.aimbot.micro_correction = true;
+                self.aim.global.aimbot.micro_correction_fov = 0.8;
+                self.aim.global.aimbot.micro_correction_strength = 0.35;
                 self.player.draw_skeleton = DrawMode::None;
                 self.player.draw_box = DrawMode::None;
                 self.player.box_thickness = 1.0;
@@ -91,6 +99,14 @@ impl Config {
                 self.aim.global.aimbot.backtrack = true;
                 self.aim.global.aimbot.backtrack_ticks = 6;
                 self.aim.global.aimbot.multipoint = false;
+                self.aim.global.aimbot.target_stickiness = true;
+                self.aim.global.aimbot.stickiness_grace_ms = 190;
+                self.aim.global.aimbot.stickiness_strength = 0.30;
+                self.aim.global.aimbot.adaptive_smoothing = true;
+                self.aim.global.aimbot.adaptive_smoothing_strength = 0.55;
+                self.aim.global.aimbot.micro_correction = true;
+                self.aim.global.aimbot.micro_correction_fov = 1.0;
+                self.aim.global.aimbot.micro_correction_strength = 0.42;
                 self.player.draw_skeleton = DrawMode::Color;
                 self.player.draw_box = DrawMode::None;
                 self.player.box_thickness = 1.0;
@@ -105,6 +121,14 @@ impl Config {
                 self.aim.global.aimbot.backtrack_ticks = 12;
                 self.aim.global.aimbot.multipoint = true;
                 self.aim.global.aimbot.multipoint_scale = 0.4;
+                self.aim.global.aimbot.target_stickiness = true;
+                self.aim.global.aimbot.stickiness_grace_ms = 160;
+                self.aim.global.aimbot.stickiness_strength = 0.25;
+                self.aim.global.aimbot.adaptive_smoothing = true;
+                self.aim.global.aimbot.adaptive_smoothing_strength = 0.45;
+                self.aim.global.aimbot.micro_correction = true;
+                self.aim.global.aimbot.micro_correction_fov = 1.2;
+                self.aim.global.aimbot.micro_correction_strength = 0.50;
                 self.player.draw_skeleton = DrawMode::Color;
                 self.player.draw_box = DrawMode::Color;
                 self.player.box_thickness = 1.0;
@@ -120,6 +144,14 @@ impl Config {
                 self.aim.global.aimbot.backtrack_ticks = 15;
                 self.aim.global.aimbot.multipoint = true;
                 self.aim.global.aimbot.multipoint_scale = 0.7;
+                self.aim.global.aimbot.target_stickiness = true;
+                self.aim.global.aimbot.stickiness_grace_ms = 120;
+                self.aim.global.aimbot.stickiness_strength = 0.15;
+                self.aim.global.aimbot.adaptive_smoothing = true;
+                self.aim.global.aimbot.adaptive_smoothing_strength = 0.25;
+                self.aim.global.aimbot.micro_correction = true;
+                self.aim.global.aimbot.micro_correction_fov = 1.6;
+                self.aim.global.aimbot.micro_correction_strength = 0.60;
                 self.player.draw_box = DrawMode::Color;
                 self.player.box_mode = BoxMode::Full;
                 self.player.box_thickness = 1.5;
@@ -136,6 +168,14 @@ impl Config {
                 self.aim.global.aimbot.visibility_check = false;
                 self.aim.global.aimbot.multipoint = true;
                 self.aim.global.aimbot.multipoint_scale = 1.0;
+                self.aim.global.aimbot.target_stickiness = false;
+                self.aim.global.aimbot.stickiness_grace_ms = 60;
+                self.aim.global.aimbot.stickiness_strength = 0.0;
+                self.aim.global.aimbot.adaptive_smoothing = false;
+                self.aim.global.aimbot.adaptive_smoothing_strength = 0.0;
+                self.aim.global.aimbot.micro_correction = false;
+                self.aim.global.aimbot.micro_correction_fov = 0.6;
+                self.aim.global.aimbot.micro_correction_strength = 1.0;
                 self.aim.global.triggerbot.enabled = true;
                 self.aim.global.triggerbot.delay = 0..=0;
                 self.player.draw_box = DrawMode::Color;
@@ -195,6 +235,14 @@ pub struct AimbotConfig {
     pub hitchance: f32,
     pub multipoint: bool,
     pub multipoint_scale: f32,
+    pub target_stickiness: bool,
+    pub stickiness_grace_ms: u64,
+    pub stickiness_strength: f32,
+    pub adaptive_smoothing: bool,
+    pub adaptive_smoothing_strength: f32,
+    pub micro_correction: bool,
+    pub micro_correction_fov: f32,
+    pub micro_correction_strength: f32,
 }
 
 impl Default for AimbotConfig {
@@ -228,6 +276,14 @@ impl Default for AimbotConfig {
             hitchance: 100.0,
             multipoint: false,
             multipoint_scale: 0.5,
+            target_stickiness: true,
+            stickiness_grace_ms: 160,
+            stickiness_strength: 0.25,
+            adaptive_smoothing: true,
+            adaptive_smoothing_strength: 0.45,
+            micro_correction: true,
+            micro_correction_fov: 0.9,
+            micro_correction_strength: 0.45,
         }
     }
 }
@@ -422,6 +478,7 @@ pub struct HudConfig {
     pub bomb_timer: bool,
     pub bomb_damage: bool,
     pub spectator_list: bool,
+    pub parser_status: bool,
     pub fov_circle: bool,
     pub fov_arrows: bool,
     pub arrow_size: f32,
@@ -455,6 +512,7 @@ impl Default for HudConfig {
             bomb_timer: true,
             bomb_damage: true,
             spectator_list: true,
+            parser_status: true,
             fov_circle: false,
             fov_arrows: true,
             arrow_size: 15.0,
@@ -536,7 +594,7 @@ impl Default for UnsafeConfig {
 
 pub static BASE_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let sudo_user = std::env::var("SUDO_USER").unwrap_or_default();
-    
+
     let base = if !sudo_user.is_empty() {
         PathBuf::from(format!("/home/{}", sudo_user)).join(".config")
     } else {
@@ -554,7 +612,7 @@ pub static BASE_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let path = base.join("deadlocked");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
-        
+
         // Fix permissions for SUDO_USER
         if !sudo_user.is_empty() {
             let _ = std::process::Command::new("chown")
@@ -678,5 +736,19 @@ mod tests {
         assert_eq!(cfg.aim.global.aimbot.fov, 45.0);
         assert!(cfg.aim.global.triggerbot.enabled);
         assert!(cfg.misc.bunnyhop);
+        assert!(!cfg.aim.global.aimbot.target_stickiness);
+        assert!(!cfg.aim.global.aimbot.adaptive_smoothing);
+        assert!(!cfg.aim.global.aimbot.micro_correction);
+    }
+
+    #[test]
+    fn legit_preset_enables_aim_dynamics() {
+        let mut cfg = Config::default();
+        cfg.load_preset(0);
+
+        assert!(cfg.aim.global.aimbot.target_stickiness);
+        assert!(cfg.aim.global.aimbot.adaptive_smoothing);
+        assert!(cfg.aim.global.aimbot.micro_correction);
+        assert_eq!(cfg.aim.global.aimbot.stickiness_grace_ms, 220);
     }
 }

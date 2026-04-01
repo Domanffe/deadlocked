@@ -71,6 +71,9 @@ pub fn write_grenades(grenades: &GrenadeList) {
     };
     let path = BASE_PATH.join(GRENADE_FILE_NAME);
     if let Err(err) = std::fs::write(&path, out) {
-        log::warn!("failed to write grenade list file {}: {err}", path.display());
+        log::warn!(
+            "failed to write grenade list file {}: {err}",
+            path.display()
+        );
     }
 }

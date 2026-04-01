@@ -81,8 +81,7 @@ pub fn checkbox(ui: &mut Ui, label: &str, value: &mut bool) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
         let label_response = ui.add(
-            egui::Label::new(RichText::new(label).color(Colors::TEXT))
-                .sense(egui::Sense::click()),
+            egui::Label::new(RichText::new(label).color(Colors::TEXT)).sense(egui::Sense::click()),
         );
         if label_response.clicked() {
             *value = !*value;
@@ -243,7 +242,11 @@ impl<'gui> Widget for Keybind<'gui> {
 
         let mut response = ui.button(
             RichText::new(text)
-                .color(if listening { Colors::WHITE } else { Colors::TEXT })
+                .color(if listening {
+                    Colors::WHITE
+                } else {
+                    Colors::TEXT
+                })
                 .monospace(),
         );
 

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 use glam::{IVec2, Mat4, Vec2, Vec3};
 use utils::{log, sync::Mutex};
@@ -341,7 +338,6 @@ impl Game for CS2 {
         } else {
             data.bomb.planted = false;
         }
-
     }
 }
 

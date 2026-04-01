@@ -82,7 +82,10 @@ mod tests {
 
     #[test]
     fn classifies_knife() {
-        assert_eq!(WeaponClass::from_string("knife_karambit"), WeaponClass::Knife);
+        assert_eq!(
+            WeaponClass::from_string("knife_karambit"),
+            WeaponClass::Knife
+        );
     }
 
     #[test]
@@ -93,6 +96,9 @@ mod tests {
     #[test]
     fn classifies_rifle_and_unknown() {
         assert_eq!(WeaponClass::from_string("ak47"), WeaponClass::Rifle);
-        assert_eq!(WeaponClass::from_string("nonexistent_weapon"), WeaponClass::Unknown);
+        assert_eq!(
+            WeaponClass::from_string("nonexistent_weapon"),
+            WeaponClass::Unknown
+        );
     }
 }

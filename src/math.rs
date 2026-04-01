@@ -139,7 +139,11 @@ mod tests {
 
     #[test]
     fn dist_to_line_clamps_to_segment_endpoints() {
-        let d = dist_to_line(vec3(5.0, 5.0, 0.0), vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0));
+        let d = dist_to_line(
+            vec3(5.0, 5.0, 0.0),
+            vec3(0.0, 0.0, 0.0),
+            vec3(10.0, 0.0, 0.0),
+        );
         assert!((d - 5.0).abs() < 1e-6);
     }
 }

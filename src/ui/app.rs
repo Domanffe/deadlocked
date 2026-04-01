@@ -187,20 +187,18 @@ impl ApplicationHandler for App {
                     overlay.request_redraw();
                 }
             }
-            WindowEvent::Resized(new_size) => {
-                match target {
-                    WindowTarget::Gui => {
-                        if let Some(gui) = &self.gui {
-                            gui.resize(*new_size);
-                        }
-                    }
-                    WindowTarget::Overlay => {
-                        if let Some(overlay) = &self.overlay {
-                            overlay.resize(*new_size);
-                        }
+            WindowEvent::Resized(new_size) => match target {
+                WindowTarget::Gui => {
+                    if let Some(gui) = &self.gui {
+                        gui.resize(*new_size);
                     }
                 }
-            }
+                WindowTarget::Overlay => {
+                    if let Some(overlay) = &self.overlay {
+                        overlay.resize(*new_size);
+                    }
+                }
+            },
             WindowEvent::KeyboardInput {
                 event: key_event, ..
             } => {

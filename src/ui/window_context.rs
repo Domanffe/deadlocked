@@ -77,9 +77,9 @@ impl WindowContext {
                 .ok()?;
         let gl_display = gl_config.display();
 
-        let raw_window_handle = window.as_ref().map(|w| {
-            w.window_handle().ok().map(|h| h.as_raw())
-        });
+        let raw_window_handle = window
+            .as_ref()
+            .map(|w| w.window_handle().ok().map(|h| h.as_raw()));
         let raw_window_handle = raw_window_handle.flatten();
         let context_attributes =
             glutin::context::ContextAttributesBuilder::new().build(raw_window_handle);
@@ -114,13 +114,14 @@ impl WindowContext {
         let surface_attributes =
             glutin::surface::SurfaceAttributesBuilder::<glutin::surface::WindowSurface>::new()
                 .build(window_handle, width, height);
-        let gl_surface = match unsafe { gl_display.create_window_surface(&gl_config, &surface_attributes) } {
-            Ok(surface) => surface,
-            Err(err) => {
-                log::error!("failed to create window surface: {err}");
-                return None;
-            }
-        };
+        let gl_surface =
+            match unsafe { gl_display.create_window_surface(&gl_config, &surface_attributes) } {
+                Ok(surface) => surface,
+                Err(err) => {
+                    log::error!("failed to create window surface: {err}");
+                    return None;
+                }
+            };
         let gl_context = match not_current_gl_context.make_current(&gl_surface) {
             Ok(context) => context,
             Err(err) => {

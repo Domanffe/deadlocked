@@ -251,6 +251,94 @@ impl App {
                 }
             });
         });
+
+        let aim_dynamics_text = self.t("aim_dynamics");
+        section(ui, aim_dynamics_text, None, |ui| {
+            let stickiness_text = self.t("target_stickiness");
+            if checkbox(
+                ui,
+                stickiness_text,
+                &mut self.weapon_config().aimbot.target_stickiness,
+            ) {
+                self.send_config();
+            }
+            if self.weapon_config().aimbot.target_stickiness {
+                let grace_text = self.t("stickiness_grace_ms");
+                if drag(
+                    ui,
+                    grace_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.stickiness_grace_ms)
+                        .range(30..=2000)
+                        .speed(10.0),
+                ) {
+                    self.send_config();
+                }
+
+                let strength_text = self.t("stickiness_strength");
+                if drag(
+                    ui,
+                    strength_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.stickiness_strength)
+                        .range(0.0..=0.8)
+                        .speed(0.02),
+                ) {
+                    self.send_config();
+                }
+            }
+
+            let adaptive_text = self.t("adaptive_smoothing");
+            if checkbox(
+                ui,
+                adaptive_text,
+                &mut self.weapon_config().aimbot.adaptive_smoothing,
+            ) {
+                self.send_config();
+            }
+            if self.weapon_config().aimbot.adaptive_smoothing {
+                let adaptive_strength_text = self.t("adaptive_smoothing_strength");
+                if drag(
+                    ui,
+                    adaptive_strength_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.adaptive_smoothing_strength)
+                        .range(0.0..=1.0)
+                        .speed(0.02),
+                ) {
+                    self.send_config();
+                }
+            }
+
+            let micro_text = self.t("micro_correction");
+            if checkbox(
+                ui,
+                micro_text,
+                &mut self.weapon_config().aimbot.micro_correction,
+            ) {
+                self.send_config();
+            }
+            if self.weapon_config().aimbot.micro_correction {
+                let micro_fov_text = self.t("micro_correction_fov");
+                if drag(
+                    ui,
+                    micro_fov_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.micro_correction_fov)
+                        .range(0.1..=5.0)
+                        .speed(0.05),
+                ) {
+                    self.send_config();
+                }
+
+                let micro_strength_text = self.t("micro_correction_strength");
+                if drag(
+                    ui,
+                    micro_strength_text,
+                    DragValue::new(&mut self.weapon_config().aimbot.micro_correction_strength)
+                        .range(0.05..=1.0)
+                        .speed(0.02),
+                ) {
+                    self.send_config();
+                }
+            }
+        });
     }
 
     fn aimbot_right(&mut self, ui: &mut Ui) {

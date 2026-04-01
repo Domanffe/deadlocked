@@ -1,6 +1,7 @@
 use glam::Vec2;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -23,14 +24,37 @@ pub struct Target {
     pub local_pawn_index: u64,
     pub previous_aim_punch: Vec2,
     pub backtrack_history: RefCell<HashMap<u64, VecDeque<crate::data::BacktrackRecord>>>,
+    pub sticky_pawn: u64,
+    pub sticky_seen_at: Option<Instant>,
 }
 
 impl Target {
     pub fn reset(&mut self) {
         let history = std::mem::take(&mut *self.backtrack_history.borrow_mut());
+        let sticky_pawn = self.sticky_pawn;
+        let sticky_seen_at = self.sticky_seen_at;
         *self = Target::default();
         *self.backtrack_history.borrow_mut() = history;
+        self.sticky_pawn = sticky_pawn;
+        self.sticky_seen_at = sticky_seen_at;
     }
+}
+
+fn stickiness_adjusted_score(
+    base_score: f32,
+    sticky_enabled: bool,
+    candidate_pawn: u64,
+    sticky_pawn: u64,
+    sticky_strength: f32,
+) -> f32 {
+    if sticky_enabled && candidate_pawn == sticky_pawn {
+        return base_score * (1.0 - sticky_strength.clamp(0.0, 0.8));
+    }
+    base_score
+}
+
+fn sticky_within_grace(last_seen: Option<Instant>, now: Instant, grace_window: Duration) -> bool {
+    last_seen.is_some_and(|seen_at| now.saturating_duration_since(seen_at) <= grace_window)
 }
 
 impl CS2 {
@@ -64,17 +88,14 @@ impl CS2 {
         let max_fov = aimbot_config.fov;
         let is_custom_mode = self.is_custom_game_mode();
 
-        let mut best_fov = 360.0;
-        let mut best_distance = f32::MAX;
+        let mut best_score = f32::MAX;
         let eye_position = local_player.eye_position(self);
+        let now = Instant::now();
 
-        if self.target.player.is_none() {
-            self.target.reset();
-        }
         if let Some(player) = &self.target.player
             && !player.is_valid(self)
         {
-            self.target.reset();
+            self.target.player = None;
         }
 
         let player_weapon = local_player.weapon(self);
@@ -120,14 +141,14 @@ impl CS2 {
         }
 
         let target_friendlies = aimbot_config.target_friendlies;
+        let sticky_enabled = aimbot_config.target_stickiness;
+        let sticky_strength = aimbot_config.stickiness_strength.clamp(0.0, 0.8);
+        let grace_window = Duration::from_millis(aimbot_config.stickiness_grace_ms.clamp(30, 2000));
+
+        let previous_target = self.target.player;
 
         for player in &self.players {
             if !(ffa || target_friendlies && is_custom_mode) && team == player.team(self) {
-                continue;
-            }
-
-            // Strictly enforce visibility in target selection
-            if aimbot_config.visibility_check && !player.visible(self, &local_player) {
                 continue;
             }
 
@@ -141,14 +162,26 @@ impl CS2 {
                 continue;
             }
 
-            let should_select = match targeting_mode {
-                TargetingMode::Fov => fov < best_fov,
-                TargetingMode::Distance => distance < best_distance,
+            if aimbot_config.visibility_check && !player.visible(self, &local_player) {
+                continue;
+            }
+
+            let base_score = match targeting_mode {
+                TargetingMode::Fov => fov,
+                TargetingMode::Distance => distance,
             };
+            let score = stickiness_adjusted_score(
+                base_score,
+                sticky_enabled,
+                player.pawn,
+                self.target.sticky_pawn,
+                sticky_strength,
+            );
+
+            let should_select = score < best_score;
 
             if should_select {
-                best_fov = fov;
-                best_distance = distance;
+                best_score = score;
 
                 self.target.player = Some(*player);
                 self.target.angle = angle;
@@ -157,9 +190,21 @@ impl CS2 {
             }
         }
 
+        if self.target.player.is_none()
+            && sticky_enabled
+            && let Some(previous_target) = previous_target
+            && previous_target.is_valid(self)
+            && sticky_within_grace(self.target.sticky_seen_at, now, grace_window)
+        {
+            self.target.player = Some(previous_target);
+        }
+
         let Some(target) = &self.target.player else {
             return;
         };
+
+        self.target.sticky_pawn = target.pawn;
+        self.target.sticky_seen_at = Some(now);
 
         // update target angle
         let mut smallest_fov = 360.0;
@@ -177,5 +222,33 @@ impl CS2 {
                 self.target.bone_index = bone.u64();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{stickiness_adjusted_score, sticky_within_grace};
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn stickiness_reduces_score_for_same_target() {
+        let score = stickiness_adjusted_score(10.0, true, 123, 123, 0.4);
+        assert!((score - 6.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn stickiness_does_not_reduce_for_other_target() {
+        let score = stickiness_adjusted_score(10.0, true, 100, 200, 0.4);
+        assert!((score - 10.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn sticky_grace_window_respected() {
+        let now = Instant::now();
+        let recent = now.checked_sub(Duration::from_millis(80));
+        let stale = now.checked_sub(Duration::from_millis(500));
+
+        assert!(sticky_within_grace(recent, now, Duration::from_millis(120)));
+        assert!(!sticky_within_grace(stale, now, Duration::from_millis(120)));
     }
 }

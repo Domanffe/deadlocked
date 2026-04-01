@@ -1,7 +1,12 @@
 use egui::{Align2, Color32, Painter, Stroke, pos2};
 
 use crate::{
-    cs2::entity::weapon_class::WeaponClass, data::Data, math::world_to_screen, ui::app::App,
+    config::KeyMode,
+    cs2::entity::weapon_class::WeaponClass,
+    data::Data,
+    math::world_to_screen,
+    parser::{ParserState, parser_status},
+    ui::app::App,
 };
 
 impl App {
@@ -161,12 +166,62 @@ impl App {
         }
     }
 
+    pub fn draw_parser_status(&self, painter: &Painter, data: &Data) {
+        if !self.config.hud.parser_status {
+            return;
+        }
+
+        let status = parser_status();
+        let (state_text, state_color) = match status.state {
+            ParserState::Parsing => ("Parsing", crate::ui::color::Colors::YELLOW),
+            ParserState::Failed => ("Failed", crate::ui::color::Colors::RED),
+            ParserState::Idle | ParserState::Ready => return,
+        };
+
+        let padding = 12.0;
+        let mut y = data.window_size.y * 0.1;
+
+        self.text(
+            painter,
+            format!("Parser: {state_text}"),
+            pos2(padding, y),
+            Align2::LEFT_TOP,
+            Some(state_color),
+        );
+        y += self.config.hud.font_size + 3.0;
+
+        if status.total_maps > 0 {
+            self.text(
+                painter,
+                format!("Progress: {}/{}", status.parsed_maps, status.total_maps),
+                pos2(padding, y),
+                Align2::LEFT_TOP,
+                None,
+            );
+            y += self.config.hud.font_size + 3.0;
+        }
+
+        if !status.current_map.is_empty() {
+            self.text(
+                painter,
+                format!("Map: {}", status.current_map),
+                pos2(padding, y),
+                Align2::LEFT_TOP,
+                None,
+            );
+        }
+    }
+
     pub fn draw_fov_circle(&self, painter: &Painter, data: &Data) {
         if !self.config.hud.fov_circle || !data.in_game {
             return;
         }
 
         let weapon_config = self.aimbot_config(&data.weapon);
+        if !weapon_config.enabled || (weapon_config.mode == KeyMode::Toggle && !data.aimbot_active)
+        {
+            return;
+        }
 
         let aim_fov = weapon_config.fov;
 

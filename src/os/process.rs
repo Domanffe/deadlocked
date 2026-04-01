@@ -38,9 +38,7 @@ fn log_vm_read_failure(actual: isize, expected: usize) {
                 "process_vm_readv returned {actual}, expected {expected} bytes (count={n})"
             );
         } else {
-            log::warn!(
-                "process_vm_readv returned {actual}, expected {expected} bytes (count={n})"
-            );
+            log::warn!("process_vm_readv returned {actual}, expected {expected} bytes (count={n})");
         }
     }
 }
