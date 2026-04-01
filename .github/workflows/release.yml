@@ -26,15 +26,19 @@ jobs:
         run: |
           mkdir -p release
           cp target/release/deadlocked release/
+          cp license release/
           cd release
-          tar -czf ../deadlocked-linux.tar.gz deadlocked
+          tar -czf ../deadlocked-x-linux.tar.gz deadlocked license
           cd ..
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: deadlocked-linux.tar.gz
+          files: deadlocked-x-linux.tar.gz
+          body: |
+            Source (tag tree): https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}
+            Source archive: https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

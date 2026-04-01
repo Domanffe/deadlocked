@@ -1,6 +1,20 @@
-# deadlocked v4.7.0
+# deadlocked-x v4.7.0
 
 A high-performance, external CS2 aimbot and ESP framework for Linux, built with stealth and modern anti-cheat bypasses in mind.
+
+## Fork Credits
+
+This project is based on the original `deadlocked` by `avitran0`.
+Upstream repository: https://github.com/avitran0/deadlocked
+
+This fork continues development independently while respecting and crediting the original work.
+
+## License
+
+This project is licensed under **GNU GPLv3**.
+When distributing binaries or modified versions, keep the license terms and provide access to corresponding source code.
+
+See: [`license`](license)
 
 ## Setup
 
@@ -18,7 +32,7 @@ chmod +x deadlocked
 ```
 
 > [!NOTE]
-> Release archive contains only the `deadlocked` binary (see `.github/workflows/release.yml`).
+> Release archive is named `deadlocked-x-linux.tar.gz` and contains `deadlocked` + `license` (see `.github/workflows/release.yml`).
 > `run.sh` and `setup.sh` are for source workflow.
 
 ### From Source (Development)

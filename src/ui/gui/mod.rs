@@ -135,7 +135,7 @@ impl App {
                 ui.vertical_centered(|ui| {
                     ui.add_space(16.0);
                     ui.heading(
-                        egui::RichText::new("DEADLOCKED // 4.7")
+                        egui::RichText::new("DEADLOCKED-X // 4.7")
                             .strong()
                             .color(self.config.accent_color)
                             .size(20.0),

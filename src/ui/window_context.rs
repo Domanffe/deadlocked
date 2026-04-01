@@ -52,7 +52,7 @@ impl WindowContext {
         } else {
             winit::window::WindowAttributes::default()
                 .with_inner_size(winit::dpi::LogicalSize::new(800, 500))
-                .with_title("deadlocked")
+                .with_title("deadlocked-x")
         };
 
         let config_template_builder = if overlay {
