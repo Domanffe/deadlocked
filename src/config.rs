@@ -17,8 +17,6 @@ use crate::{
     ui::color::Colors,
 };
 
-const REFRESH_RATE: u64 = 100;
-pub const LOOP_DURATION: Duration = Duration::from_millis(1000 / REFRESH_RATE);
 pub const SLEEP_DURATION: Duration = Duration::from_secs(5);
 pub const DEFAULT_CONFIG_NAME: &str = "deadlocked.toml";
 
@@ -45,6 +43,7 @@ pub struct Config {
     pub radar: RadarConfig,
     pub misc: UnsafeConfig,
     pub accent_color: Color32,
+    pub fps: u32,
 }
 
 impl Default for Config {
@@ -57,6 +56,7 @@ impl Default for Config {
             radar: RadarConfig::default(),
             misc: UnsafeConfig::default(),
             accent_color: Colors::BLUE,
+            fps: 120,
         }
     }
 }
@@ -750,5 +750,16 @@ mod tests {
         assert!(cfg.aim.global.aimbot.adaptive_smoothing);
         assert!(cfg.aim.global.aimbot.micro_correction);
         assert_eq!(cfg.aim.global.aimbot.stickiness_grace_ms, 220);
+    }
+
+    #[test]
+    fn config_default_fps_is_120() {
+        assert_eq!(Config::default().fps, 120);
+    }
+
+    #[test]
+    fn deserialize_without_fps_uses_default() {
+        let cfg: Config = toml::from_str("").expect("config should deserialize");
+        assert_eq!(cfg.fps, 120);
     }
 }

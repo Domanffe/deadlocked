@@ -28,9 +28,6 @@ use crate::{
     },
 };
 
-const FRAME_RATE: u64 = 60;
-const FRAME_DURATION: Duration = Duration::from_micros(1_000_000 / FRAME_RATE);
-
 pub struct App {
     pub gui: Option<WindowContext>,
     pub overlay: Option<WindowContext>,
@@ -76,7 +73,8 @@ impl App {
             gui: None,
             overlay: None,
 
-            next_frame_time: Instant::now() + FRAME_DURATION,
+            next_frame_time: Instant::now()
+                + Duration::from_secs_f32(1.0 / config.fps.clamp(30, 500) as f32),
 
             tx,
             rx,
@@ -120,6 +118,11 @@ impl App {
         self.gui = Some(gui);
         self.overlay = Some(overlay);
     }
+
+    fn frame_duration(&self) -> Duration {
+        let fps = self.config.fps.clamp(30, 500) as f32;
+        Duration::from_secs_f32(1.0 / fps)
+    }
 }
 
 impl ApplicationHandler for App {
@@ -131,14 +134,14 @@ impl ApplicationHandler for App {
             if let Some(window) = &self.overlay {
                 window.window().request_redraw();
             }
-            self.next_frame_time += FRAME_DURATION;
+            self.next_frame_time += self.frame_duration();
         }
     }
 
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.create_window(event_loop);
 
-        self.next_frame_time = Instant::now() + FRAME_DURATION;
+        self.next_frame_time = Instant::now() + self.frame_duration();
         event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
             self.next_frame_time,
         ));

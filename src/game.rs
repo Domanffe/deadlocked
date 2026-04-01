@@ -1,13 +1,15 @@
-use std::{sync::Arc, thread::sleep, time::Instant};
+use std::{
+    sync::Arc,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use crossbeam::channel::{Receiver, Sender};
 use parking_lot::RwLock;
 use utils::{log, sync::Mutex};
 
 use crate::{
-    config::{
-        CONFIG_PATH, Config, DEFAULT_CONFIG_NAME, LOOP_DURATION, SLEEP_DURATION, parse_config,
-    },
+    config::{CONFIG_PATH, Config, DEFAULT_CONFIG_NAME, SLEEP_DURATION, parse_config},
     cs2::CS2,
     data::Data,
     message::{Envelope, GameStatus, Message, Target},
@@ -115,15 +117,15 @@ impl GameManager {
 
             if is_valid {
                 let elapsed = start.elapsed();
-                if elapsed < LOOP_DURATION {
-                    sleep(LOOP_DURATION - elapsed);
+                let loop_duration = self.loop_duration();
+                if elapsed < loop_duration {
+                    sleep(loop_duration - elapsed);
                 } else {
                     log::debug!(
                         "game loop took {} ms (max {} ms)",
                         elapsed.as_millis(),
-                        LOOP_DURATION.as_millis()
+                        loop_duration.as_millis()
                     );
-                    sleep(LOOP_DURATION);
                 }
             } else {
                 sleep(SLEEP_DURATION);
@@ -135,5 +137,10 @@ impl GameManager {
         if let Message::Config(config) = message {
             self.config = *config;
         }
+    }
+
+    fn loop_duration(&self) -> Duration {
+        let fps = self.config.fps.clamp(30, 500) as f32;
+        Duration::from_secs_f32(1.0 / fps)
     }
 }

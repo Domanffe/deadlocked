@@ -1,8 +1,8 @@
-use egui::Ui;
+use egui::{DragValue, Ui};
 
 use crate::ui::{
     app::App,
-    gui::helpers::{checkbox, color_picker, scroll, section, slider},
+    gui::helpers::{checkbox, color_picker, drag, scroll, section, slider},
 };
 
 impl App {
@@ -94,6 +94,7 @@ impl App {
         let parser_status_text = self.t("parser_status");
         let fov_circle_text = self.t("fov_circle");
         let sniper_crosshair_text = self.t("sniper_crosshair");
+        let fps_text = self.t("fps");
 
         section(ui, general_text, None, |ui| {
             if checkbox(ui, bomb_timer_text, &mut self.config.hud.bomb_timer) {
@@ -118,6 +119,15 @@ impl App {
                 ui,
                 sniper_crosshair_text,
                 &mut self.config.hud.sniper_crosshair,
+            ) {
+                self.send_config();
+            }
+            if drag(
+                ui,
+                fps_text,
+                DragValue::new(&mut self.config.fps)
+                    .range(30..=500)
+                    .speed(1.0),
             ) {
                 self.send_config();
             }
