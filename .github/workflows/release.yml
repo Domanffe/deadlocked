@@ -17,7 +17,7 @@ jobs:
           sudo apt-get install -y pkg-config libx11-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libegl1-mesa-dev libgles2-mesa-dev
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Build Release
         run: cargo build --release
@@ -27,8 +27,10 @@ jobs:
           mkdir -p release
           cp target/release/deadlocked release/
           cp license release/
+          mkdir -p release/lib
+          cp lib/libmapdata.so release/lib/
           cd release
-          tar -czf ../deadlocked-x-linux.tar.gz deadlocked license
+          tar -czf ../deadlocked-x-linux.tar.gz deadlocked license lib
           cd ..
 
       - name: Create Release

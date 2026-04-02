@@ -1,13 +1,10 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, Read, Write as _},
+    io::{BufReader, Read},
     path::{Path, PathBuf},
     process::Command,
-    sync::{
-        LazyLock, Mutex,
-        atomic::{AtomicU8, AtomicUsize, Ordering},
-    },
+    sync::{LazyLock, Mutex},
 };
 
 use bytemuck::AnyBitPattern;
@@ -15,283 +12,295 @@ use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use utils::log;
 
 use crate::{
-    os::crash::{self},
+    os::process::Process,
     parser::bvh::{Bvh, Triangle},
 };
 
 pub mod bvh;
+mod mapdata;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ParserState {
+pub enum GeometrySource {
+    RuntimeMapdata,
+    CacheBvh,
+    Source2ViewerCurrentMap,
+}
+
+impl GeometrySource {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::RuntimeMapdata => "Runtime",
+            Self::CacheBvh => "Cache fallback",
+            Self::Source2ViewerCurrentMap => "Current-map extract",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeometryState {
     Idle,
-    Parsing,
+    Loading,
     Ready,
+    Fallback,
     Failed,
 }
 
-#[derive(Debug, Clone)]
-pub struct ParserStatus {
-    pub state: ParserState,
-    pub parsed_maps: usize,
-    pub total_maps: usize,
-    pub current_map: String,
-}
-
-static PARSER_STATE: AtomicU8 = AtomicU8::new(0);
-static PARSED_MAPS: AtomicUsize = AtomicUsize::new(0);
-static TOTAL_MAPS: AtomicUsize = AtomicUsize::new(0);
-static CURRENT_MAP: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
-
-fn set_parser_state(state: ParserState) {
-    let v = match state {
-        ParserState::Idle => 0,
-        ParserState::Parsing => 1,
-        ParserState::Ready => 2,
-        ParserState::Failed => 3,
-    };
-    PARSER_STATE.store(v, Ordering::Relaxed);
-}
-
-fn set_current_map(name: &str) {
-    if let Ok(mut current) = CURRENT_MAP.lock() {
-        *current = name.to_string();
+impl GeometryState {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Idle => "Idle",
+            Self::Loading => "Loading",
+            Self::Ready => "Ready",
+            Self::Fallback => "Fallback",
+            Self::Failed => "Failed",
+        }
     }
 }
 
-pub fn parser_status() -> ParserStatus {
-    let state = match PARSER_STATE.load(Ordering::Relaxed) {
-        1 => ParserState::Parsing,
-        2 => ParserState::Ready,
-        3 => ParserState::Failed,
-        _ => ParserState::Idle,
-    };
-    let current_map = CURRENT_MAP
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeometryStatus {
+    pub state: GeometryState,
+    pub source: Option<GeometrySource>,
+    pub map: String,
+    pub detail: String,
+}
+
+impl Default for GeometryStatus {
+    fn default() -> Self {
+        Self {
+            state: GeometryState::Idle,
+            source: None,
+            map: String::new(),
+            detail: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct GeometryOptions {
+    force_reparse: bool,
+    use_system_binary: bool,
+}
+
+static GEOMETRY_STATUS: LazyLock<Mutex<GeometryStatus>> =
+    LazyLock::new(|| Mutex::new(GeometryStatus::default()));
+static GEOMETRY_OPTIONS: LazyLock<Mutex<GeometryOptions>> =
+    LazyLock::new(|| Mutex::new(GeometryOptions::default()));
+
+fn set_geometry_status(status: GeometryStatus) {
+    if let Ok(mut current) = GEOMETRY_STATUS.lock() {
+        *current = status;
+    }
+}
+
+pub fn set_geometry_options(force_reparse: bool, use_system_binary: bool) {
+    if let Ok(mut options) = GEOMETRY_OPTIONS.lock() {
+        *options = GeometryOptions {
+            force_reparse,
+            use_system_binary,
+        };
+    }
+}
+
+fn geometry_options() -> GeometryOptions {
+    GEOMETRY_OPTIONS
         .lock()
-        .map(|s| s.clone())
-        .unwrap_or_else(|_| String::new());
-    ParserStatus {
-        state,
-        parsed_maps: PARSED_MAPS.load(Ordering::Relaxed),
-        total_maps: TOTAL_MAPS.load(Ordering::Relaxed),
-        current_map,
-    }
+        .map(|options| *options)
+        .unwrap_or_default()
 }
 
-pub fn parse_maps(mut force_reparse: bool, use_system_binary: bool) {
-    set_parser_state(ParserState::Parsing);
-    PARSED_MAPS.store(0, Ordering::Relaxed);
-    TOTAL_MAPS.store(0, Ordering::Relaxed);
-    set_current_map("");
+pub fn geometry_status() -> GeometryStatus {
+    GEOMETRY_STATUS
+        .lock()
+        .map(|status| status.clone())
+        .unwrap_or_default()
+}
 
-    crash::info();
-    let source2viewer = exe_path().join("source2viewer/Source2Viewer-CLI");
-    if !source2viewer.exists() && !use_system_binary {
-        log::warn!("could not find source2viewer binary");
-        set_parser_state(ParserState::Failed);
-        return;
+pub fn load_map_auto(
+    process: &Process,
+    map_name: &str,
+    vphys_world: u64,
+) -> Option<(Bvh, GeometrySource)> {
+    let map_name = map_name.trim_end_matches(".vpk").to_string();
+    if map_name.is_empty() {
+        set_geometry_status(GeometryStatus::default());
+        return None;
     }
 
-    let game_dir = match game_dir() {
-        Ok(dir) => dir,
-        Err(err) => {
-            log::warn!("could not find cs2 game directory: {err}");
-            set_parser_state(ParserState::Failed);
-            return;
-        }
-    };
-    let build_file = game_dir.join("game/bin/built_from_cl.txt");
-    let Ok(cs2_build_raw) = std::fs::read_to_string(&build_file) else {
-        log::warn!("could not read cs2 build number");
-        set_parser_state(ParserState::Failed);
-        return;
-    };
-    let cs2_build = cs2_build_raw.trim();
-    let cs2_build: u64 = cs2_build.parse().unwrap_or_default();
+    set_geometry_status(GeometryStatus {
+        state: GeometryState::Loading,
+        source: None,
+        map: map_name.clone(),
+        detail: "Resolving geometry backend".to_string(),
+    });
 
-    let maps_dir = match maps_dir() {
-        Ok(dir) => dir,
-        Err(err) => {
-            log::error!("could not find cs2 maps directory: {err}");
-            set_parser_state(ParserState::Failed);
-            return;
-        }
-    };
-    let parsed_build_file = maps_dir.join("parsed_build.txt");
-    let parsed_build = std::fs::read_to_string(&parsed_build_file).unwrap_or_default();
-    let parsed_build: u64 = parsed_build.parse().unwrap_or_default();
+    let options = geometry_options();
+    let (result, status) = resolve_geometry_load(
+        &map_name,
+        || mapdata::load_runtime_map(process, vphys_world),
+        || load_cached_map(&map_name),
+        || load_current_map_with_source2viewer(&map_name, options.force_reparse, options.use_system_binary),
+    );
 
-    if parsed_build != cs2_build {
-        force_reparse = true;
+    if let Some((bvh, GeometrySource::RuntimeMapdata)) = result.as_ref() {
+        warm_cache_async(map_name.clone(), bvh.clone());
     }
 
-    if force_reparse {
-        log::info!("reparsing map data");
+    set_geometry_status(status);
+    result
+}
+
+fn resolve_geometry_load<RuntimeLoad, CacheLoad, RecoveryLoad>(
+    map_name: &str,
+    runtime_load: RuntimeLoad,
+    cache_load: CacheLoad,
+    recovery_load: RecoveryLoad,
+) -> (Option<(Bvh, GeometrySource)>, GeometryStatus)
+where
+    RuntimeLoad: FnOnce() -> Option<Bvh>,
+    CacheLoad: FnOnce() -> Option<Bvh>,
+    RecoveryLoad: FnOnce() -> Option<Bvh>,
+{
+    if let Some(bvh) = runtime_load() {
+        return (
+            Some((bvh, GeometrySource::RuntimeMapdata)),
+            GeometryStatus {
+                state: GeometryState::Ready,
+                source: Some(GeometrySource::RuntimeMapdata),
+                map: map_name.to_string(),
+                detail: "Loaded live geometry from game memory".to_string(),
+            },
+        );
     }
 
-    let mut files = Vec::with_capacity(32);
-    let maps_dir_iter = match std::fs::read_dir(&maps_dir) {
-        Ok(dir) => dir,
-        Err(err) => {
-            log::error!("could not read cs2 maps dir: {err}");
-            set_parser_state(ParserState::Failed);
-            return;
-        }
-    };
-    for file in maps_dir_iter {
-        let Ok(file) = file else {
-            continue;
-        };
-
-        let Ok(file_type) = file.file_type() else {
-            continue;
-        };
-        if !file_type.is_file() {
-            continue;
-        }
-
-        let file_name = file.file_name();
-        let Some(file_name) = file_name.to_str() else {
-            continue;
-        };
-        if file_name.contains("_vanity") {
-            continue;
-        }
-
-        if !file_name.starts_with("ar_")
-            && !file_name.starts_with("cs_")
-            && !file_name.starts_with("de_")
-        {
-            continue;
-        }
-
-        if !file_name.ends_with(".vpk") {
-            continue;
-        }
-
-        files.push(file_name.to_string());
+    if let Some(bvh) = cache_load() {
+        return (
+            Some((bvh, GeometrySource::CacheBvh)),
+            GeometryStatus {
+                state: GeometryState::Fallback,
+                source: Some(GeometrySource::CacheBvh),
+                map: map_name.to_string(),
+                detail: "Runtime backend unavailable, using cached .bvh".to_string(),
+            },
+        );
     }
 
+    if let Some(bvh) = recovery_load() {
+        return (
+            Some((bvh, GeometrySource::Source2ViewerCurrentMap)),
+            GeometryStatus {
+                state: GeometryState::Fallback,
+                source: Some(GeometrySource::Source2ViewerCurrentMap),
+                map: map_name.to_string(),
+                detail: "Recovered current map via Source2Viewer".to_string(),
+            },
+        );
+    }
+
+    (
+        None,
+        GeometryStatus {
+            state: GeometryState::Failed,
+            source: None,
+            map: map_name.to_string(),
+            detail: "No runtime geometry, cache, or recovery path succeeded".to_string(),
+        },
+    )
+}
+
+fn warm_cache_async(map_name: String, bvh: Bvh) {
+    std::thread::spawn(move || {
+        if save_cached_map(&map_name, &bvh).is_none() {
+            log::warn!("failed to warm geometry cache for {map_name}");
+        }
+    });
+}
+
+fn load_current_map_with_source2viewer(
+    map_name: &str,
+    force_reparse: bool,
+    use_system_binary: bool,
+) -> Option<Bvh> {
+    let maps_dir = maps_dir().ok()?;
+    let map_path = maps_dir.join(vpk_name(map_name));
+    if !map_path.exists() {
+        log::warn!("map file is missing for Source2Viewer recovery: {}", map_path.display());
+        return None;
+    }
+
+    let source2viewer = resolve_source2viewer_binary(use_system_binary)?;
     let geom_dir = maps_dir.join("geometry");
-    if force_reparse
-        && geom_dir.exists()
-        && let Err(err) = std::fs::remove_dir_all(&geom_dir)
-    {
-        log::error!("error removing geometry dir: {err}");
+    let map_geom_dir = geom_dir.join("maps").join(map_name);
+
+    if force_reparse && map_geom_dir.exists() && std::fs::remove_dir_all(&map_geom_dir).is_err() {
+        log::warn!("failed to clear old geometry for {map_name}");
+    }
+    if std::fs::create_dir_all(geom_dir.join("maps")).is_err() {
+        log::warn!("failed to prepare geometry output directory");
+        return None;
     }
 
-    if !geom_dir.exists()
-        && let Err(err) = std::fs::create_dir_all(geom_dir.join("maps"))
-    {
-        log::error!("error creating geometry dir: {err}");
-    }
-    for file in &files {
-        let path = maps_dir.join(file);
-        let map_name = file.trim_end_matches(".vpk");
-
-        if maps_dir.join("geometry/maps").join(map_name).exists() && !force_reparse {
-            continue;
-        }
-
-        let mut s2v_cmd = Command::new(if use_system_binary {
-            std::ffi::OsStr::new("Source2Viewer-CLI")
-        } else {
-            source2viewer.as_os_str()
-        });
-        s2v_cmd.args([
+    log::info!("recovering geometry for {map_name} via Source2Viewer");
+    let output = match Command::new(&source2viewer)
+        .args([
             "-i",
-            path.to_string_lossy().as_ref(),
+            map_path.to_string_lossy().as_ref(),
             "-d",
             "-o",
             geom_dir.to_string_lossy().as_ref(),
             "-f",
             &format!("maps/{map_name}/world_physics.vmdl_c"),
-        ]);
-        if let Err(error) = s2v_cmd.output() {
-            log::error!("source2viewer error:\n{error}");
-        }
-    }
-
-    if !geom_dir.exists() {
-        log::warn!("could not parse any map successfully");
-        set_parser_state(ParserState::Failed);
-        return;
-    }
-
-    let pending_maps: Vec<String> = files
-        .iter()
-        .filter(|file| {
-            let map_name = file.trim_end_matches(".vpk");
-            force_reparse || !maps_dir.join(format!("{map_name}.bvh")).exists()
-        })
-        .cloned()
-        .collect();
-
-    TOTAL_MAPS.store(pending_maps.len(), Ordering::Relaxed);
-    if pending_maps.is_empty() {
-        set_parser_state(ParserState::Ready);
-        return;
-    }
-
-    let cpus = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1);
-    let batch_size = (cpus / 2).max(1);
-    for chunk in pending_maps.chunks(batch_size) {
-        let mut threads = Vec::with_capacity(batch_size);
-        for map in chunk {
-            let map = map.clone();
-            let maps_dir = maps_dir.clone();
-            let thread = std::thread::spawn(move || {
-                set_current_map(&map);
-                parse_map(&map, &maps_dir, force_reparse);
-                PARSED_MAPS.fetch_add(1, Ordering::Relaxed);
-            });
-            threads.push(thread);
-        }
-
-        for thread in threads {
-            let _ = thread.join();
-        }
-    }
-    let mut parsed_build_file = match File::create(&parsed_build_file) {
-        Ok(file) => file,
+        ])
+        .output()
+    {
+        Ok(output) => output,
         Err(err) => {
-            log::error!("could not open metadata file: {err}");
-            set_parser_state(ParserState::Failed);
-            return;
+            log::warn!("failed to start Source2Viewer for {map_name}: {err}");
+            return None;
         }
     };
-    if let Err(err) = parsed_build_file.write_all(format!("{cs2_build}").as_bytes()) {
-        log::error!("could not write to metadata file: {err}");
-        set_parser_state(ParserState::Failed);
-        return;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::warn!("Source2Viewer failed for {map_name}: {}", stderr.trim());
+        return None;
     }
-    set_current_map("");
-    set_parser_state(ParserState::Ready);
-    log::info!("loaded map info");
+
+    parse_map(map_name, &maps_dir, force_reparse)
 }
 
-fn parse_map(map: &str, maps_dir: &Path, force_reparse: bool) {
-    let map_name = map.replace(".vpk", "");
-    let bvh_name = format!("{map_name}.bvh");
-    let bvh_path = maps_dir.join(bvh_name);
-
-    if bvh_path.exists() && !force_reparse {
-        log::debug!("bvh for {map_name} exists");
-        return;
+fn resolve_source2viewer_binary(use_system_binary: bool) -> Option<PathBuf> {
+    if use_system_binary {
+        return Some(PathBuf::from("Source2Viewer-CLI"));
     }
 
-    let geom_dir = maps_dir.join("geometry/maps").join(&map_name);
+    let source2viewer = exe_path().join("source2viewer/Source2Viewer-CLI");
+    if source2viewer.exists() {
+        Some(source2viewer)
+    } else {
+        None
+    }
+}
+
+fn parse_map(map_name: &str, maps_dir: &Path, force_reparse: bool) -> Option<Bvh> {
+    let bvh_path = maps_dir.join(bvh_name(map_name));
+
+    if bvh_path.exists() && !force_reparse {
+        return load_bvh_from_path(&bvh_path);
+    }
+
+    let geom_dir = maps_dir.join("geometry/maps").join(map_name);
     if !geom_dir.exists() {
-        log::warn!("geometry directory doesn't exist...");
+        log::warn!("geometry directory is missing for {map_name}: {}", geom_dir.display());
+        return None;
     }
 
     let mut map_bvh = Bvh::new();
+    let mut found_geometry = false;
     let geom_dir_iter = match std::fs::read_dir(&geom_dir) {
         Ok(dir) => dir,
         Err(err) => {
             log::warn!("could not read geometry directory: {err}");
-            return;
+            return None;
         }
     };
     for file in geom_dir_iter {
@@ -313,7 +322,7 @@ fn parse_map(map: &str, maps_dir: &Path, force_reparse: bool) {
             Ok(file) => file,
             Err(err) => {
                 log::error!("could not open {file_name} ({map_name}): {err}");
-                return;
+                return None;
             }
         };
         let mut reader = BufReader::new(file);
@@ -364,6 +373,7 @@ fn parse_map(map: &str, maps_dir: &Path, force_reparse: bool) {
                 let v3 = vertices[face[2] as usize];
                 let triangle = Triangle::new(v1, v2, v3);
                 map_bvh.insert(triangle);
+                found_geometry = true;
             } else {
                 for i in 1..face.len() - 1 {
                     let v1 = vertices[face[0] as usize];
@@ -371,20 +381,19 @@ fn parse_map(map: &str, maps_dir: &Path, force_reparse: bool) {
                     let v3 = vertices[face[i + 1] as usize];
                     let triangle = Triangle::new(v1, v2, v3);
                     map_bvh.insert(triangle);
+                    found_geometry = true;
                 }
             }
         }
     }
+    if !found_geometry {
+        log::warn!("no geometry triangles were extracted for {map_name}");
+        return None;
+    }
     map_bvh.build();
-    let mut bvh_file = match File::create(&bvh_path) {
-        Ok(file) => file,
-        Err(err) => {
-            log::error!("could not save bvh for {map_name} in file {bvh_path:?}: {err}");
-            return;
-        }
-    };
-    map_bvh.save(&mut bvh_file);
+    let _ = save_bvh_to_path(&bvh_path, &map_bvh);
     log::info!("parsed bvh for {map_name}");
+    Some(map_bvh)
 }
 
 #[derive(PartialEq)]
@@ -686,19 +695,137 @@ fn read_bytes(reader: &mut impl Read, count: usize) -> Vec<u8> {
     buf
 }
 
-pub fn load_map(map_name: &str) -> Option<Bvh> {
-    let maps_dir = maps_dir().ok()?;
-    let bvh_name = if map_name.ends_with(".vpk") {
-        map_name.replace(".vpk", ".bvh")
-    } else {
-        let mut name = map_name.to_owned();
-        name.push_str(".bvh");
-        name
-    };
-    let bvh_path = maps_dir.join(bvh_name);
-    if !bvh_path.exists() {
+fn vpk_name(map_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(map_name.trim_end_matches(".vpk"));
+    path.set_extension("vpk");
+    path
+}
+
+fn bvh_name(map_name: &str) -> PathBuf {
+    let mut path = PathBuf::from(map_name.trim_end_matches(".vpk"));
+    path.set_extension("bvh");
+    path
+}
+
+fn cache_path(map_name: &str) -> Option<PathBuf> {
+    Some(maps_dir().ok()?.join(bvh_name(map_name)))
+}
+
+fn load_cached_map(map_name: &str) -> Option<Bvh> {
+    let bvh_path = cache_path(map_name)?;
+    load_bvh_from_path(&bvh_path)
+}
+
+fn load_bvh_from_path(path: &Path) -> Option<Bvh> {
+    if !path.exists() {
         return None;
     }
-    let mut bvh_file = File::open(&bvh_path).ok()?;
+    let mut bvh_file = File::open(path).ok()?;
     Bvh::load(&mut bvh_file)
+}
+
+fn save_cached_map(map_name: &str, bvh: &Bvh) -> Option<()> {
+    let bvh_path = cache_path(map_name)?;
+    save_bvh_to_path(&bvh_path, bvh)
+}
+
+fn save_bvh_to_path(path: &Path, bvh: &Bvh) -> Option<()> {
+    if let Some(parent) = path.parent()
+        && std::fs::create_dir_all(parent).is_err()
+    {
+        log::warn!("failed to create cache directory {}", parent.display());
+        return None;
+    }
+
+    let mut bvh_file = File::create(path).ok()?;
+    bvh.save(&mut bvh_file);
+    Some(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use super::{Bvh, GeometrySource, GeometryState, resolve_geometry_load};
+
+    #[test]
+    fn runtime_source_wins_before_fallbacks() {
+        let calls = RefCell::new(Vec::new());
+        let (_result, status) = resolve_geometry_load(
+            "de_test",
+            || {
+                calls.borrow_mut().push("runtime");
+                Some(Bvh::new())
+            },
+            || {
+                calls.borrow_mut().push("cache");
+                Some(Bvh::new())
+            },
+            || {
+                calls.borrow_mut().push("s2v");
+                Some(Bvh::new())
+            },
+        );
+
+        assert_eq!(calls.into_inner(), vec!["runtime"]);
+        assert_eq!(status.state, GeometryState::Ready);
+        assert_eq!(status.source, Some(GeometrySource::RuntimeMapdata));
+    }
+
+    #[test]
+    fn cache_fallback_is_used_before_source2viewer() {
+        let calls = RefCell::new(Vec::new());
+        let (_result, status) = resolve_geometry_load(
+            "de_test",
+            || {
+                calls.borrow_mut().push("runtime");
+                None
+            },
+            || {
+                calls.borrow_mut().push("cache");
+                Some(Bvh::new())
+            },
+            || {
+                calls.borrow_mut().push("s2v");
+                Some(Bvh::new())
+            },
+        );
+
+        assert_eq!(calls.into_inner(), vec!["runtime", "cache"]);
+        assert_eq!(status.state, GeometryState::Fallback);
+        assert_eq!(status.source, Some(GeometrySource::CacheBvh));
+    }
+
+    #[test]
+    fn source2viewer_recovery_runs_after_runtime_and_cache_fail() {
+        let calls = RefCell::new(Vec::new());
+        let (_result, status) = resolve_geometry_load(
+            "de_test",
+            || {
+                calls.borrow_mut().push("runtime");
+                None
+            },
+            || {
+                calls.borrow_mut().push("cache");
+                None
+            },
+            || {
+                calls.borrow_mut().push("s2v");
+                Some(Bvh::new())
+            },
+        );
+
+        assert_eq!(calls.into_inner(), vec!["runtime", "cache", "s2v"]);
+        assert_eq!(status.state, GeometryState::Fallback);
+        assert_eq!(status.source, Some(GeometrySource::Source2ViewerCurrentMap));
+    }
+
+    #[test]
+    fn failed_status_is_reported_when_all_backends_fail() {
+        let (_result, status) =
+            resolve_geometry_load("de_test", || None, || None, || None);
+
+        assert_eq!(status.state, GeometryState::Failed);
+        assert_eq!(status.source, None);
+    }
 }

@@ -18,7 +18,7 @@ use crate::{
     game::Game,
     math::{angles_from_vector, vec2_clamp},
     os::{mouse::Mouse, process::Process},
-    parser::{bvh::Bvh, load_map},
+    parser::{GeometrySource, bvh::Bvh, load_map_auto},
     ui::grenades::{Grenade, GrenadeList},
 };
 
@@ -466,10 +466,23 @@ impl CS2 {
     fn check_bvh(&mut self) {
         let current_map = self.current_map();
         if current_map != self.current_bvh {
-            self.bvh = load_map(&current_map);
-            if self.bvh.is_some() {
-                log::info!("loaded bvh for {current_map}");
-                self.current_bvh = current_map;
+            self.current_bvh = current_map.clone();
+            self.bvh = None;
+
+            if let Some((bvh, source)) =
+                load_map_auto(&self.process, &current_map, self.offsets.direct.vphys_world)
+            {
+                let source = match source {
+                    GeometrySource::RuntimeMapdata => "runtime mapdata",
+                    GeometrySource::CacheBvh => "cached .bvh",
+                    GeometrySource::Source2ViewerCurrentMap => "current-map Source2Viewer recovery",
+                };
+                log::info!("loaded geometry for {current_map} via {source}");
+                self.bvh = Some(bvh);
+            } else {
+                log::warn!(
+                    "failed to load geometry for {current_map}; falling back to spotted visibility"
+                );
             }
         }
     }

@@ -5,7 +5,7 @@ use crate::{
     cs2::entity::weapon_class::WeaponClass,
     data::Data,
     math::world_to_screen,
-    parser::{ParserState, parser_status},
+    parser::{GeometryState, geometry_status},
     ui::app::App,
 };
 
@@ -166,16 +166,19 @@ impl App {
         }
     }
 
-    pub fn draw_parser_status(&self, painter: &Painter, data: &Data) {
+    pub fn draw_geometry_status(&self, painter: &Painter, data: &Data) {
         if !self.config.hud.parser_status {
             return;
         }
 
-        let status = parser_status();
-        let (state_text, state_color) = match status.state {
-            ParserState::Parsing => ("Parsing", crate::ui::color::Colors::YELLOW),
-            ParserState::Failed => ("Failed", crate::ui::color::Colors::RED),
-            ParserState::Idle | ParserState::Ready => return,
+        let status = geometry_status();
+        let state_text = status.state.label();
+        let state_color = match status.state {
+            GeometryState::Idle => return,
+            GeometryState::Loading => crate::ui::color::Colors::YELLOW,
+            GeometryState::Ready => crate::ui::color::Colors::GREEN,
+            GeometryState::Fallback => crate::ui::color::Colors::ACCENT,
+            GeometryState::Failed => crate::ui::color::Colors::RED,
         };
 
         let padding = 12.0;
@@ -183,17 +186,17 @@ impl App {
 
         self.text(
             painter,
-            format!("Parser: {state_text}"),
+            format!("Geometry: {state_text}"),
             pos2(padding, y),
             Align2::LEFT_TOP,
             Some(state_color),
         );
         y += self.config.hud.font_size + 3.0;
 
-        if status.total_maps > 0 {
+        if let Some(source) = status.source {
             self.text(
                 painter,
-                format!("Progress: {}/{}", status.parsed_maps, status.total_maps),
+                format!("Source: {}", source.label()),
                 pos2(padding, y),
                 Align2::LEFT_TOP,
                 None,
@@ -201,10 +204,21 @@ impl App {
             y += self.config.hud.font_size + 3.0;
         }
 
-        if !status.current_map.is_empty() {
+        if !status.map.is_empty() {
             self.text(
                 painter,
-                format!("Map: {}", status.current_map),
+                format!("Map: {}", status.map),
+                pos2(padding, y),
+                Align2::LEFT_TOP,
+                None,
+            );
+            y += self.config.hud.font_size + 3.0;
+        }
+
+        if !status.detail.is_empty() {
+            self.text(
+                painter,
+                status.detail,
                 pos2(padding, y),
                 Align2::LEFT_TOP,
                 None,

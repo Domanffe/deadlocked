@@ -1,4 +1,4 @@
-# deadlocked-x v4.7.0
+# deadlocked-x v4.7.2
 
 A high-performance, external CS2 aimbot and ESP framework for Linux, built with stealth and modern anti-cheat bypasses in mind.
 
@@ -32,22 +32,25 @@ chmod +x deadlocked
 ```
 
 > [!NOTE]
-> Release archive is named `deadlocked-x-linux.tar.gz` and contains `deadlocked` + `license` (see `.github/workflows/release.yml`).
+> Release archive is named `deadlocked-x-linux.tar.gz` and contains `deadlocked`, `license`, and `lib/libmapdata.so` (see `.github/workflows/release.yml`).
 > `run.sh` and `setup.sh` are for source workflow.
 
 ### From Source (Development)
 
 ```bash
+git clone https://github.com/Domanffe/deadlocked
+cd deadlocked
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
 ./setup.sh
 # Restart your machine (required for uinput/permissions)
-git clone https://github.com/Domanffe/deadlocked
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 ### Core Requirements
 - **uinput:** Kernel module must be loaded for stealthy mouse input.
 - **Native Steam:** Flatpak versions are not supported due to process sandboxing.
 - **Permissions:** Read/Write access to /dev/uinput and memory access (handled by setup.sh).
+- **Platform Notes:** For distro-specific setup notes, see [`os-setup.md`](os-setup.md).
 
 ## Running
 
@@ -58,7 +61,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 > [!IMPORTANT]
-> On the first run or after game updates, the system will perform an asynchronous VPK/Map parse to build BVH trees for instantaneous visibility checks. This process is resource-intensive; it is recommended to let it finish before joining a match.
+> Geometry now loads on demand when the current map changes.
+> The preferred path is live runtime mapdata, with fallback to cached `.bvh` data and then current-map `Source2Viewer` recovery if available.
+> `--force-reparse` and `--local-s2v` still exist, but they now affect recovery for the current map instead of triggering a full startup parse of all maps.
 
 ## Features
 
@@ -71,7 +76,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 - **Backtrack:** Ability to target enemy positions up to 200ms in the past (15 ticks) to compensate for latency.
 
 ### Visuals (External Overlay)
-- **Instantaneous Visibility:** Leverages local BVH geometry maps for real-time color changes (no delay from game engine bits).
+- **Instantaneous Visibility:** Uses live runtime geometry when available, with cached BVH fallback for stable real-time visibility checks.
 - **Skeleton ESP:** Precise joint rendering with configurable thickness and head-circle scale.
 - **Out-of-FOV Arrows:** 360-degree tactical indicators pointing to off-screen enemies.
 - **Snaplines:** Lines from any screen edge to targets for quick target acquisition.
@@ -82,7 +87,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 - **Full Localization:** Native support for Russian and English languages.
 - **Modern GUI:** Sleek dark-mode interface with rounded corners, pill-style navigation, and accent color customization.
 - **Config Presets:** 5 pre-tuned tiers from Legit to Rage for instant setup.
-- **Web Radar:** See the entire map and all players on any device via a browser.
+- **Overlay Radar:** Lightweight in-overlay radar with configurable size, scale, and position.
 - **Keybind List:** Real-time HUD overlay showing active features and their hotkey status.
 
 ### Misc & Unsafe
@@ -97,7 +102,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Configs are managed in the Config tab. Use Presets for quick setup, or click "Save to Current Profile" to persist your manual adjustments. Files are stored in $HOME/.config/deadlocked/configs.
 
 ### Wayland Support
-Native Wayland is supported. For Hyprland, add these rules to your config for a perfect overlay:
+Wayland can work, but when both X11 and Wayland are available the app prefers X11/XWayland by default for more reliable overlay positioning.
+Use `--wayland` to force native Wayland, or `--x11` to force X11/XWayland.
+
+For Hyprland, these rules can still help the overlay behave more predictably:
 
 ```conf
 windowrulev2 = float, title:^(deadlocked_overlay)$
@@ -107,6 +115,8 @@ windowrulev2 = noblur, title:^(deadlocked_overlay)$
 windowrulev2 = opaque, title:^(deadlocked_overlay)$
 windowrulev2 = size 100% 100%, title:^(deadlocked_overlay)$
 ```
+
+`setup.sh` only adds the `no_blur` rule automatically. If you want the full behavior above, add the remaining rules manually.
 
 ---
 

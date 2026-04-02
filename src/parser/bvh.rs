@@ -124,7 +124,7 @@ impl Triangle {
 }
 
 #[repr(C)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 enum BvhNode {
     Branch {
         left: usize,
@@ -138,7 +138,7 @@ enum BvhNode {
 }
 
 #[repr(C)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Bvh {
     nodes: Vec<BvhNode>,
     triangles: Vec<Triangle>,
@@ -165,6 +165,12 @@ impl Bvh {
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer).ok()?;
         postcard::from_bytes(&buffer).ok()
+    }
+
+    pub fn set(&mut self, triangles: Vec<Triangle>) {
+        self.triangles = triangles;
+        self.nodes.clear();
+        self.root = None;
     }
 
     pub fn insert(&mut self, triangle: Triangle) -> usize {
@@ -439,5 +445,18 @@ mod tests {
         bvh.build();
 
         assert!(bvh.has_line_of_sight(vec3(0.0, 20.0, 0.0), vec3(10.0, 20.0, 0.0)));
+    }
+
+    #[test]
+    fn set_rebuilds_line_of_sight() {
+        let mut bvh = Bvh::new();
+        bvh.set(vec![Triangle::new(
+            vec3(5.0, -10.0, -10.0),
+            vec3(5.0, 10.0, -10.0),
+            vec3(5.0, 0.0, 10.0),
+        )]);
+        bvh.build();
+
+        assert!(!bvh.has_line_of_sight(vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0)));
     }
 }

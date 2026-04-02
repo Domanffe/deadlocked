@@ -91,7 +91,7 @@ impl App {
         let bomb_damage_text = self.t("bomb_damage");
         let spectator_list_text = self.t("spectator_list");
         let keybind_list_text = self.t("keybind_list");
-        let parser_status_text = self.t("parser_status");
+        let geometry_status_text = self.t("geometry_status");
         let fov_circle_text = self.t("fov_circle");
         let sniper_crosshair_text = self.t("sniper_crosshair");
         let fps_text = self.t("fps");
@@ -109,7 +109,7 @@ impl App {
             if checkbox(ui, keybind_list_text, &mut self.config.hud.keybind_list) {
                 self.send_config();
             }
-            if checkbox(ui, parser_status_text, &mut self.config.hud.parser_status) {
+            if checkbox(ui, geometry_status_text, &mut self.config.hud.parser_status) {
                 self.send_config();
             }
             if checkbox(ui, fov_circle_text, &mut self.config.hud.fov_circle) {

@@ -10,7 +10,7 @@ use utils::{
 use crate::{
     data::Data,
     os::mouse::check_uinput,
-    parser::parse_maps,
+    parser::set_geometry_options,
     ui::{app::App, grenades::read_grenades},
 };
 
@@ -40,6 +40,7 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
     os::crash::install_crash_handler();
+    spawn_with_crash_handler(os::crash::info);
 
     if !check_uinput() {
         return;
@@ -66,9 +67,7 @@ fn main() {
             "running on native wayland backend; compositor may ignore absolute window positioning"
         );
     }
-    spawn_with_crash_handler(move || {
-        parse_maps(force_reparse, use_system_binary);
-    });
+    set_geometry_options(force_reparse, use_system_binary);
 
     let (tx, rx) = unbounded();
     let (tx_gui, rx_gui) = bounded(16);
